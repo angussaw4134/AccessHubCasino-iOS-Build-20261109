@@ -1,0 +1,79 @@
+name: Build AccessHub Casino loader IPA
+
+on:
+  workflow_dispatch:
+    inputs:
+      online_tests:
+        description: 'Exercise the four games against the live free-credit backend'
+        required: true
+        default: false
+        type: boolean
+  push:
+    paths: ['casino-app/**', '.github/workflows/build-casino-app.yml']
+
+permissions:
+  contents: read
+
+jobs:
+  unsigned-device-ipa:
+    runs-on: macos-15
+    timeout-minutes: 40
+    env:
+      ONLINE_TESTS: ${{ inputs.online_tests && '1' || '0' }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build arm64 iPhone IPA for loader signing
+        id: device
+        run: bash casino-app/scripts/build-loader-ipa.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: AccessHubCasino-loader-IPA
+          if-no-files-found: error
+          retention-days: 14
+          path: |
+            casino-app/build/loader/output/AccessHubCasino.ipa
+            casino-app/build/loader/output/AccessHubCasino.ipa.sha256
+            casino-app/build/loader/output/AccessHubCasino-build.json
+      - name: Select small and large installed iPhone simulators
+        run: xcrun simctl list devices available -j | python3 casino-app/scripts/select_simulators.py >> "$GITHUB_ENV"
+      - name: Test smaller iPhone
+        id: small
+        run: |
+          set -o pipefail
+          xcodebuild -project casino-app/AccessHubCasino.xcodeproj -scheme AccessHubCasino \
+            -destination "platform=iOS Simulator,id=$SMALL_ID" \
+            -derivedDataPath casino-app/build/simulator \
+            -resultBundlePath casino-app/build/Small-iPhone.xcresult \
+            ACCESSHUB_RUN_ONLINE_TESTS="$ONLINE_TESTS" CODE_SIGNING_ALLOWED=NO \
+            test 2>&1 | tee casino-app/build/small-iphone.log
+      - name: Test larger iPhone
+        if: ${{ always() && env.LARGE_ID != '' && steps.device.outcome == 'success' }}
+        run: |
+          set -o pipefail
+          xcodebuild -project casino-app/AccessHubCasino.xcodeproj -scheme AccessHubCasino \
+            -destination "platform=iOS Simulator,id=$LARGE_ID" \
+            -derivedDataPath casino-app/build/simulator \
+            -resultBundlePath casino-app/build/Large-iPhone.xcresult \
+            ACCESSHUB_RUN_ONLINE_TESTS="$ONLINE_TESTS" CODE_SIGNING_ALLOWED=NO \
+            test 2>&1 | tee casino-app/build/large-iphone.log
+      - name: Extract test screenshots
+        if: always()
+        run: |
+          mkdir -p casino-app/build/attachments
+          for RESULT in casino-app/build/*.xcresult; do
+            [ -d "$RESULT" ] || continue
+            NAME=$(basename "$RESULT" .xcresult)
+            xcrun xcresulttool export attachments --path "$RESULT" \
+              --output-path "casino-app/build/attachments/$NAME" || true
+          done
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: AccessHubCasino-build-and-test-evidence
+          if-no-files-found: warn
+          retention-days: 14
+          path: |
+            casino-app/build/loader/output/device-build.log
+            casino-app/build/*.log
+            casino-app/build/*.xcresult
+            casino-app/build/attachments/**

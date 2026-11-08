@@ -1,0 +1,8 @@
+// Replace only this endpoint when deploying a separate environment.
+// The empty expansion prevents xcconfig from treating // as a comment.
+ACCESSHUB_API_BASE_URL = https:/$()/accesshub-casino-native.fejiofasj.workers.dev
+PRODUCT_BUNDLE_IDENTIFIER = app.accesshub.casino
+// Set DEVELOPMENT_TEAM in Xcode's Signing & Capabilities or on xcodebuild.
+DEVELOPMENT_TEAM =
+// Connected UI tests create genuine free-credit guest activity. Opt in explicitly.
+ACCESSHUB_RUN_ONLINE_TESTS = 0

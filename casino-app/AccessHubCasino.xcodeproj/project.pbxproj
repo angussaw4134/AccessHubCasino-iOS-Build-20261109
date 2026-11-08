@@ -1,0 +1,711 @@
+// !$*UTF8*$!
+{
+	"archiveVersion" = 1;
+	"classes" = {
+	};
+	"objectVersion" = 56;
+	"objects" = {
+		"8BA534B86A474C621FFC7F76" = {
+			"isa" = "PBXFileReference";
+			"lastKnownFileType" = "sourcecode.swift";
+			"path" = "AccessHubCasinoApp.swift";
+			"sourceTree" = "<group>";
+		};
+		"199ECBB1BB3DC04EA2E8EC75" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "8BA534B86A474C621FFC7F76";
+		};
+		"47C9C8209E79D8E4FB8A142C" = {
+			"isa" = "PBXFileReference";
+			"lastKnownFileType" = "sourcecode.swift";
+			"path" = "AccountViews.swift";
+			"sourceTree" = "<group>";
+		};
+		"1D7FCD8BDBA19E4C2132BE3C" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "47C9C8209E79D8E4FB8A142C";
+		};
+		"46ACB10CC2707E37A19803C7" = {
+			"isa" = "PBXFileReference";
+			"lastKnownFileType" = "sourcecode.swift";
+			"path" = "CasinoStore.swift";
+			"sourceTree" = "<group>";
+		};
+		"574EA64ED66A140E96DDB46D" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "46ACB10CC2707E37A19803C7";
+		};
+		"D85D81DE995CB8D5464B5651" = {
+			"isa" = "PBXFileReference";
+			"lastKnownFileType" = "sourcecode.swift";
+			"path" = "Design.swift";
+			"sourceTree" = "<group>";
+		};
+		"0905ED5EC9748C10177138A6" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "D85D81DE995CB8D5464B5651";
+		};
+		"4BA5273AE65D02DE3BB347A5" = {
+			"isa" = "PBXFileReference";
+			"lastKnownFileType" = "sourcecode.swift";
+			"path" = "GameViews.swift";
+			"sourceTree" = "<group>";
+		};
+		"C3EFFB075586F8C799006F45" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "4BA5273AE65D02DE3BB347A5";
+		};
+		"F523624F4CB9C247B200021E" = {
+			"isa" = "PBXFileReference";
+			"lastKnownFileType" = "sourcecode.swift";
+			"path" = "HomeViews.swift";
+			"sourceTree" = "<group>";
+		};
+		"425C5E3C0DD3D14B80C83741" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "F523624F4CB9C247B200021E";
+		};
+		"64D6663A6F3BFBE15734A904" = {
+			"isa" = "PBXFileReference";
+			"lastKnownFileType" = "sourcecode.swift";
+			"path" = "Models.swift";
+			"sourceTree" = "<group>";
+		};
+		"D1B1E93CC8825EE71A6BC9AF" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "64D6663A6F3BFBE15734A904";
+		};
+		"7165360DE488F2B7E22940FD" = {
+			"isa" = "PBXFileReference";
+			"lastKnownFileType" = "sourcecode.swift";
+			"path" = "RulesView.swift";
+			"sourceTree" = "<group>";
+		};
+		"160AA990260094B144B4D6DA" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "7165360DE488F2B7E22940FD";
+		};
+		"C9D248F37F6705D78E3D6146" = {
+			"isa" = "PBXFileReference";
+			"lastKnownFileType" = "sourcecode.swift";
+			"path" = "Security.swift";
+			"sourceTree" = "<group>";
+		};
+		"92B72946635C9D75BA7E9D22" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "C9D248F37F6705D78E3D6146";
+		};
+		"7B281B5834FC2FFF02CCC69B" = {
+			"isa" = "PBXFileReference";
+			"lastKnownFileType" = "folder.assetcatalog";
+			"path" = "Assets.xcassets";
+			"sourceTree" = "<group>";
+		};
+		"F533077732FDE75F7831EE1B" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "7B281B5834FC2FFF02CCC69B";
+		};
+		"033DDDACCF8F51ACDDB905A1" = {
+			"isa" = "PBXFileReference";
+			"lastKnownFileType" = "file.storyboard";
+			"path" = "LaunchScreen.storyboard";
+			"sourceTree" = "<group>";
+		};
+		"16AF6640BBB3904DF730ED24" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "033DDDACCF8F51ACDDB905A1";
+		};
+		"2BBA19478F9D88BE14A79ABC" = {
+			"isa" = "PBXFileReference";
+			"lastKnownFileType" = "text.xml";
+			"path" = "PrivacyInfo.xcprivacy";
+			"sourceTree" = "<group>";
+		};
+		"58305B5EEAAB1C31EA692967" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "2BBA19478F9D88BE14A79ABC";
+		};
+		"5EC49EABE02409E19FBCEA13" = {
+			"isa" = "PBXFileReference";
+			"lastKnownFileType" = "text.plist.xml";
+			"path" = "Info.plist";
+			"sourceTree" = "<group>";
+		};
+		"AB811A83C766113E89B6097D" = {
+			"isa" = "PBXFileReference";
+			"lastKnownFileType" = "audio.wav";
+			"path" = "collect.wav";
+			"sourceTree" = "<group>";
+		};
+		"8087F336B19C3ED6527D2347" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "AB811A83C766113E89B6097D";
+		};
+		"3DB72BFAD5D6550082316721" = {
+			"isa" = "PBXFileReference";
+			"lastKnownFileType" = "audio.wav";
+			"path" = "finish.wav";
+			"sourceTree" = "<group>";
+		};
+		"AF30DD195D52694D7755D5D8" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "3DB72BFAD5D6550082316721";
+		};
+		"A6622E2B11BEDD7C786A59C9" = {
+			"isa" = "PBXFileReference";
+			"lastKnownFileType" = "audio.wav";
+			"path" = "reel.wav";
+			"sourceTree" = "<group>";
+		};
+		"223535C7B8A83FD9752A5FB5" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "A6622E2B11BEDD7C786A59C9";
+		};
+		"6A06E897E6D482F74466DCDA" = {
+			"isa" = "PBXFileReference";
+			"lastKnownFileType" = "audio.wav";
+			"path" = "reveal.wav";
+			"sourceTree" = "<group>";
+		};
+		"D7BA93E0FB6170C0D3DFEE67" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "6A06E897E6D482F74466DCDA";
+		};
+		"B203AA93141D11A1C56258A2" = {
+			"isa" = "PBXFileReference";
+			"lastKnownFileType" = "audio.wav";
+			"path" = "tap.wav";
+			"sourceTree" = "<group>";
+		};
+		"64461CC326393F40AF630CC4" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "B203AA93141D11A1C56258A2";
+		};
+		"F21FE41A65A3AEE7CD145B65" = {
+			"isa" = "PBXFileReference";
+			"lastKnownFileType" = "audio.wav";
+			"path" = "win.wav";
+			"sourceTree" = "<group>";
+		};
+		"5919FEFAE1DDB4B59B8B989D" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "F21FE41A65A3AEE7CD145B65";
+		};
+		"1436435BC06304B1100354E0" = {
+			"isa" = "PBXGroup";
+			"children" = (
+				"AB811A83C766113E89B6097D",
+				"3DB72BFAD5D6550082316721",
+				"A6622E2B11BEDD7C786A59C9",
+				"6A06E897E6D482F74466DCDA",
+				"B203AA93141D11A1C56258A2",
+				"F21FE41A65A3AEE7CD145B65",
+			);
+			"path" = "Audio";
+			"sourceTree" = "<group>";
+		};
+		"3C3B0F03DC089F93B8457928" = {
+			"isa" = "PBXGroup";
+			"children" = (
+				"8BA534B86A474C621FFC7F76",
+				"47C9C8209E79D8E4FB8A142C",
+				"46ACB10CC2707E37A19803C7",
+				"D85D81DE995CB8D5464B5651",
+				"4BA5273AE65D02DE3BB347A5",
+				"F523624F4CB9C247B200021E",
+				"64D6663A6F3BFBE15734A904",
+				"7165360DE488F2B7E22940FD",
+				"C9D248F37F6705D78E3D6146",
+				"7B281B5834FC2FFF02CCC69B",
+				"033DDDACCF8F51ACDDB905A1",
+				"2BBA19478F9D88BE14A79ABC",
+				"5EC49EABE02409E19FBCEA13",
+				"1436435BC06304B1100354E0",
+			);
+			"path" = "AccessHubCasino";
+			"sourceTree" = "<group>";
+		};
+		"DFBA7AADE0868074C2861C98" = {
+			"isa" = "PBXFileReference";
+			"lastKnownFileType" = "text.xcconfig";
+			"path" = "Config.xcconfig";
+			"sourceTree" = "<group>";
+		};
+		"78EB49E2E61F4F6BA66DC0CB" = {
+			"isa" = "PBXFileReference";
+			"lastKnownFileType" = "sourcecode.swift";
+			"path" = "ClientContractTests.swift";
+			"sourceTree" = "<group>";
+		};
+		"1E6B3F2252EAEDFDCDFE0E55" = {
+			"isa" = "PBXFileReference";
+			"lastKnownFileType" = "sourcecode.swift";
+			"path" = "AccessHubCasinoUITests.swift";
+			"sourceTree" = "<group>";
+		};
+		"0A300DBF3250EDF7A3D43A3C" = {
+			"isa" = "PBXGroup";
+			"children" = (
+				"78EB49E2E61F4F6BA66DC0CB",
+			);
+			"path" = "AccessHubCasinoTests";
+			"sourceTree" = "<group>";
+		};
+		"0F2612BBE722F8B97292B1A7" = {
+			"isa" = "PBXGroup";
+			"children" = (
+				"1E6B3F2252EAEDFDCDFE0E55",
+			);
+			"path" = "AccessHubCasinoUITests";
+			"sourceTree" = "<group>";
+		};
+		"4E783A9E10D2A8ABA38CD11C" = {
+			"isa" = "PBXFileReference";
+			"lastKnownFileType" = "wrapper.application";
+			"path" = "AccessHubCasino.app";
+			"sourceTree" = "BUILT_PRODUCTS_DIR";
+		};
+		"198AA8EA2A3A4B5640AEA2BE" = {
+			"isa" = "PBXFileReference";
+			"lastKnownFileType" = "wrapper.cfbundle";
+			"path" = "AccessHubCasinoTests.xctest";
+			"sourceTree" = "BUILT_PRODUCTS_DIR";
+		};
+		"9B7BED31F6F48AD5D908B2BC" = {
+			"isa" = "PBXFileReference";
+			"lastKnownFileType" = "wrapper.cfbundle";
+			"path" = "AccessHubCasinoUITests.xctest";
+			"sourceTree" = "BUILT_PRODUCTS_DIR";
+		};
+		"615B463D1028E4E24B674CF7" = {
+			"isa" = "PBXGroup";
+			"children" = (
+				"4E783A9E10D2A8ABA38CD11C",
+				"198AA8EA2A3A4B5640AEA2BE",
+				"9B7BED31F6F48AD5D908B2BC",
+			);
+			"name" = "Products";
+			"sourceTree" = "<group>";
+		};
+		"870B3294C0CBD48AF6BBCC1B" = {
+			"isa" = "PBXGroup";
+			"children" = (
+				"3C3B0F03DC089F93B8457928",
+				"0A300DBF3250EDF7A3D43A3C",
+				"0F2612BBE722F8B97292B1A7",
+				"DFBA7AADE0868074C2861C98",
+				"615B463D1028E4E24B674CF7",
+			);
+			"sourceTree" = "<group>";
+		};
+		"ED8772ADEC3A6C25161BC957" = {
+			"isa" = "XCBuildConfiguration";
+			"buildSettings" = {
+				"ALWAYS_SEARCH_USER_PATHS" = "NO";
+				"CLANG_ENABLE_MODULES" = "YES";
+				"CLANG_ENABLE_OBJC_ARC" = "YES";
+				"CLANG_WARN_BOOL_CONVERSION" = "YES";
+				"CLANG_WARN_CONSTANT_CONVERSION" = "YES";
+				"CLANG_WARN_INFINITE_RECURSION" = "YES";
+				"CLANG_WARN_INT_CONVERSION" = "YES";
+				"CLANG_WARN_UNREACHABLE_CODE" = "YES";
+				"COPY_PHASE_STRIP" = "NO";
+				"ENABLE_STRICT_OBJC_MSGSEND" = "YES";
+				"GCC_C_LANGUAGE_STANDARD" = "gnu17";
+				"GCC_NO_COMMON_BLOCKS" = "YES";
+				"GCC_WARN_64_TO_32_BIT_CONVERSION" = "YES";
+				"GCC_WARN_ABOUT_RETURN_TYPE" = "YES_ERROR";
+				"GCC_WARN_UNINITIALIZED_AUTOS" = "YES_AGGRESSIVE";
+				"GCC_WARN_UNUSED_FUNCTION" = "YES";
+				"GCC_WARN_UNUSED_VARIABLE" = "YES";
+				"IPHONEOS_DEPLOYMENT_TARGET" = "17.0";
+				"SDKROOT" = "iphoneos";
+				"SWIFT_VERSION" = "5.0";
+				"TARGETED_DEVICE_FAMILY" = "1";
+				"CODE_SIGN_STYLE" = "Automatic";
+				"SUPPORTED_PLATFORMS" = "iphoneos iphonesimulator";
+				"SWIFT_OPTIMIZATION_LEVEL" = "-Onone";
+				"DEBUG_INFORMATION_FORMAT" = "dwarf";
+				"ENABLE_TESTABILITY" = "YES";
+				"SWIFT_ACTIVE_COMPILATION_CONDITIONS" = "DEBUG $(inherited)";
+			};
+			"name" = "Debug";
+			"baseConfigurationReference" = "DFBA7AADE0868074C2861C98";
+		};
+		"00F209874A1F7309F6DCEAA7" = {
+			"isa" = "XCBuildConfiguration";
+			"buildSettings" = {
+				"ALWAYS_SEARCH_USER_PATHS" = "NO";
+				"CLANG_ENABLE_MODULES" = "YES";
+				"CLANG_ENABLE_OBJC_ARC" = "YES";
+				"CLANG_WARN_BOOL_CONVERSION" = "YES";
+				"CLANG_WARN_CONSTANT_CONVERSION" = "YES";
+				"CLANG_WARN_INFINITE_RECURSION" = "YES";
+				"CLANG_WARN_INT_CONVERSION" = "YES";
+				"CLANG_WARN_UNREACHABLE_CODE" = "YES";
+				"COPY_PHASE_STRIP" = "NO";
+				"ENABLE_STRICT_OBJC_MSGSEND" = "YES";
+				"GCC_C_LANGUAGE_STANDARD" = "gnu17";
+				"GCC_NO_COMMON_BLOCKS" = "YES";
+				"GCC_WARN_64_TO_32_BIT_CONVERSION" = "YES";
+				"GCC_WARN_ABOUT_RETURN_TYPE" = "YES_ERROR";
+				"GCC_WARN_UNINITIALIZED_AUTOS" = "YES_AGGRESSIVE";
+				"GCC_WARN_UNUSED_FUNCTION" = "YES";
+				"GCC_WARN_UNUSED_VARIABLE" = "YES";
+				"IPHONEOS_DEPLOYMENT_TARGET" = "17.0";
+				"SDKROOT" = "iphoneos";
+				"SWIFT_VERSION" = "5.0";
+				"TARGETED_DEVICE_FAMILY" = "1";
+				"CODE_SIGN_STYLE" = "Automatic";
+				"SUPPORTED_PLATFORMS" = "iphoneos iphonesimulator";
+				"SWIFT_OPTIMIZATION_LEVEL" = "-O";
+				"DEBUG_INFORMATION_FORMAT" = "dwarf-with-dsym";
+				"ENABLE_TESTABILITY" = "NO";
+			};
+			"name" = "Release";
+			"baseConfigurationReference" = "DFBA7AADE0868074C2861C98";
+		};
+		"640DC9EFD529235A8D9E2727" = {
+			"isa" = "XCConfigurationList";
+			"buildConfigurations" = (
+				"ED8772ADEC3A6C25161BC957",
+				"00F209874A1F7309F6DCEAA7",
+			);
+			"defaultConfigurationIsVisible" = 0;
+			"defaultConfigurationName" = "Release";
+		};
+		"F8975E934DA2067E0E497395" = {
+			"isa" = "XCBuildConfiguration";
+			"buildSettings" = {
+				"ASSETCATALOG_COMPILER_APPICON_NAME" = "AppIcon";
+				"CURRENT_PROJECT_VERSION" = "1";
+				"MARKETING_VERSION" = "1.0";
+				"GENERATE_INFOPLIST_FILE" = "NO";
+				"INFOPLIST_FILE" = "AccessHubCasino/Info.plist";
+				"LD_RUNPATH_SEARCH_PATHS" = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				"PRODUCT_NAME" = "$(TARGET_NAME)";
+				"SWIFT_EMIT_LOC_STRINGS" = "YES";
+				"SUPPORTS_MACCATALYST" = "NO";
+				"SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD" = "NO";
+			};
+			"name" = "Debug";
+		};
+		"F72D4F08E84CA4C7F809A7CF" = {
+			"isa" = "XCBuildConfiguration";
+			"buildSettings" = {
+				"ASSETCATALOG_COMPILER_APPICON_NAME" = "AppIcon";
+				"CURRENT_PROJECT_VERSION" = "1";
+				"MARKETING_VERSION" = "1.0";
+				"GENERATE_INFOPLIST_FILE" = "NO";
+				"INFOPLIST_FILE" = "AccessHubCasino/Info.plist";
+				"LD_RUNPATH_SEARCH_PATHS" = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				"PRODUCT_NAME" = "$(TARGET_NAME)";
+				"SWIFT_EMIT_LOC_STRINGS" = "YES";
+				"SUPPORTS_MACCATALYST" = "NO";
+				"SUPPORTS_MAC_DESIGNED_FOR_IPHONE_IPAD" = "NO";
+			};
+			"name" = "Release";
+		};
+		"4867F1BF372A84237FA0A5A7" = {
+			"isa" = "XCConfigurationList";
+			"buildConfigurations" = (
+				"F8975E934DA2067E0E497395",
+				"F72D4F08E84CA4C7F809A7CF",
+			);
+			"defaultConfigurationIsVisible" = 0;
+			"defaultConfigurationName" = "Release";
+		};
+		"9E5170DD8516708D743B58C3" = {
+			"isa" = "XCBuildConfiguration";
+			"buildSettings" = {
+				"PRODUCT_BUNDLE_IDENTIFIER" = "app.accesshub.casino.tests";
+				"GENERATE_INFOPLIST_FILE" = "YES";
+				"PRODUCT_NAME" = "$(TARGET_NAME)";
+				"BUNDLE_LOADER" = "$(TEST_HOST)";
+				"TEST_HOST" = "$(BUILT_PRODUCTS_DIR)/AccessHubCasino.app/AccessHubCasino";
+				"LD_RUNPATH_SEARCH_PATHS" = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+			};
+			"name" = "Debug";
+		};
+		"B8E4BB20B79A92CF430DB3B0" = {
+			"isa" = "XCBuildConfiguration";
+			"buildSettings" = {
+				"PRODUCT_BUNDLE_IDENTIFIER" = "app.accesshub.casino.tests";
+				"GENERATE_INFOPLIST_FILE" = "YES";
+				"PRODUCT_NAME" = "$(TARGET_NAME)";
+				"BUNDLE_LOADER" = "$(TEST_HOST)";
+				"TEST_HOST" = "$(BUILT_PRODUCTS_DIR)/AccessHubCasino.app/AccessHubCasino";
+				"LD_RUNPATH_SEARCH_PATHS" = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+			};
+			"name" = "Release";
+		};
+		"E61796AA3886E57C02398BB3" = {
+			"isa" = "XCConfigurationList";
+			"buildConfigurations" = (
+				"9E5170DD8516708D743B58C3",
+				"B8E4BB20B79A92CF430DB3B0",
+			);
+			"defaultConfigurationIsVisible" = 0;
+			"defaultConfigurationName" = "Release";
+		};
+		"BAC435B037607B50C4729BF1" = {
+			"isa" = "XCBuildConfiguration";
+			"buildSettings" = {
+				"PRODUCT_BUNDLE_IDENTIFIER" = "app.accesshub.casino.uitests";
+				"GENERATE_INFOPLIST_FILE" = "YES";
+				"PRODUCT_NAME" = "$(TARGET_NAME)";
+				"TEST_TARGET_NAME" = "AccessHubCasino";
+				"LD_RUNPATH_SEARCH_PATHS" = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+			};
+			"name" = "Debug";
+		};
+		"5DE0B96147C56CE7EB664EA3" = {
+			"isa" = "XCBuildConfiguration";
+			"buildSettings" = {
+				"PRODUCT_BUNDLE_IDENTIFIER" = "app.accesshub.casino.uitests";
+				"GENERATE_INFOPLIST_FILE" = "YES";
+				"PRODUCT_NAME" = "$(TARGET_NAME)";
+				"TEST_TARGET_NAME" = "AccessHubCasino";
+				"LD_RUNPATH_SEARCH_PATHS" = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+			};
+			"name" = "Release";
+		};
+		"3AB36C5A259E6297ABD26694" = {
+			"isa" = "XCConfigurationList";
+			"buildConfigurations" = (
+				"BAC435B037607B50C4729BF1",
+				"5DE0B96147C56CE7EB664EA3",
+			);
+			"defaultConfigurationIsVisible" = 0;
+			"defaultConfigurationName" = "Release";
+		};
+		"2ACAB0F4F00AFB4E75D7861A" = {
+			"isa" = "PBXSourcesBuildPhase";
+			"buildActionMask" = 2147483647;
+			"files" = (
+				"199ECBB1BB3DC04EA2E8EC75",
+				"1D7FCD8BDBA19E4C2132BE3C",
+				"574EA64ED66A140E96DDB46D",
+				"0905ED5EC9748C10177138A6",
+				"C3EFFB075586F8C799006F45",
+				"425C5E3C0DD3D14B80C83741",
+				"D1B1E93CC8825EE71A6BC9AF",
+				"160AA990260094B144B4D6DA",
+				"92B72946635C9D75BA7E9D22",
+			);
+			"runOnlyForDeploymentPostprocessing" = 0;
+		};
+		"7832BE9D48D1D1C25261F718" = {
+			"isa" = "PBXFrameworksBuildPhase";
+			"buildActionMask" = 2147483647;
+			"files" = (
+			);
+			"runOnlyForDeploymentPostprocessing" = 0;
+		};
+		"1603B420BD26AED6ECC2D240" = {
+			"isa" = "PBXResourcesBuildPhase";
+			"buildActionMask" = 2147483647;
+			"files" = (
+				"F533077732FDE75F7831EE1B",
+				"16AF6640BBB3904DF730ED24",
+				"58305B5EEAAB1C31EA692967",
+				"8087F336B19C3ED6527D2347",
+				"AF30DD195D52694D7755D5D8",
+				"223535C7B8A83FD9752A5FB5",
+				"D7BA93E0FB6170C0D3DFEE67",
+				"64461CC326393F40AF630CC4",
+				"5919FEFAE1DDB4B59B8B989D",
+			);
+			"runOnlyForDeploymentPostprocessing" = 0;
+		};
+		"F75109BEB4DD8800DA6B45F8" = {
+			"isa" = "PBXNativeTarget";
+			"buildConfigurationList" = "4867F1BF372A84237FA0A5A7";
+			"buildPhases" = (
+				"2ACAB0F4F00AFB4E75D7861A",
+				"7832BE9D48D1D1C25261F718",
+				"1603B420BD26AED6ECC2D240",
+			);
+			"buildRules" = (
+			);
+			"dependencies" = (
+			);
+			"name" = "AccessHubCasino";
+			"productName" = "AccessHubCasino";
+			"productReference" = "4E783A9E10D2A8ABA38CD11C";
+			"productType" = "com.apple.product-type.application";
+		};
+		"7D86E9D7437AA1E1C4DC3AE7" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "78EB49E2E61F4F6BA66DC0CB";
+		};
+		"CC9A8D0242A9C56AF2122E44" = {
+			"isa" = "PBXSourcesBuildPhase";
+			"buildActionMask" = 2147483647;
+			"files" = (
+				"7D86E9D7437AA1E1C4DC3AE7",
+			);
+			"runOnlyForDeploymentPostprocessing" = 0;
+		};
+		"B1D7F4B6E3D30562D9DBAFC0" = {
+			"isa" = "PBXFrameworksBuildPhase";
+			"buildActionMask" = 2147483647;
+			"files" = (
+			);
+			"runOnlyForDeploymentPostprocessing" = 0;
+		};
+		"DE4BCD53F3C3136ACF409368" = {
+			"isa" = "PBXResourcesBuildPhase";
+			"buildActionMask" = 2147483647;
+			"files" = (
+			);
+			"runOnlyForDeploymentPostprocessing" = 0;
+		};
+		"A2C1AAABE5CE846EA9429419" = {
+			"isa" = "PBXContainerItemProxy";
+			"containerPortal" = "98F54143AB4E86B28C3AFEE0";
+			"proxyType" = 1;
+			"remoteGlobalIDString" = "F75109BEB4DD8800DA6B45F8";
+			"remoteInfo" = "AccessHubCasino";
+		};
+		"03C64E9A3C3BED951AC96980" = {
+			"isa" = "PBXTargetDependency";
+			"target" = "F75109BEB4DD8800DA6B45F8";
+			"targetProxy" = "A2C1AAABE5CE846EA9429419";
+		};
+		"48021BA534050206D31D8AAD" = {
+			"isa" = "PBXNativeTarget";
+			"buildConfigurationList" = "E61796AA3886E57C02398BB3";
+			"buildPhases" = (
+				"CC9A8D0242A9C56AF2122E44",
+				"B1D7F4B6E3D30562D9DBAFC0",
+				"DE4BCD53F3C3136ACF409368",
+			);
+			"buildRules" = (
+			);
+			"dependencies" = (
+				"03C64E9A3C3BED951AC96980",
+			);
+			"name" = "AccessHubCasinoTests";
+			"productName" = "AccessHubCasinoTests";
+			"productReference" = "198AA8EA2A3A4B5640AEA2BE";
+			"productType" = "com.apple.product-type.bundle.unit-test";
+		};
+		"441BE0495D5DF14C1C120247" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "1E6B3F2252EAEDFDCDFE0E55";
+		};
+		"2CA7AB56C261AC2F2D7F70EB" = {
+			"isa" = "PBXSourcesBuildPhase";
+			"buildActionMask" = 2147483647;
+			"files" = (
+				"441BE0495D5DF14C1C120247",
+			);
+			"runOnlyForDeploymentPostprocessing" = 0;
+		};
+		"C4B9C286F4652F0A5D7E354F" = {
+			"isa" = "PBXFrameworksBuildPhase";
+			"buildActionMask" = 2147483647;
+			"files" = (
+			);
+			"runOnlyForDeploymentPostprocessing" = 0;
+		};
+		"5F241091B640F7446BA8DE1C" = {
+			"isa" = "PBXResourcesBuildPhase";
+			"buildActionMask" = 2147483647;
+			"files" = (
+			);
+			"runOnlyForDeploymentPostprocessing" = 0;
+		};
+		"C79C3E4FFACCEA2AC84AC2E0" = {
+			"isa" = "PBXContainerItemProxy";
+			"containerPortal" = "98F54143AB4E86B28C3AFEE0";
+			"proxyType" = 1;
+			"remoteGlobalIDString" = "F75109BEB4DD8800DA6B45F8";
+			"remoteInfo" = "AccessHubCasino";
+		};
+		"FE41E3343258A6882539145A" = {
+			"isa" = "PBXTargetDependency";
+			"target" = "F75109BEB4DD8800DA6B45F8";
+			"targetProxy" = "C79C3E4FFACCEA2AC84AC2E0";
+		};
+		"794AAC98ACE6EB716B86C3A5" = {
+			"isa" = "PBXNativeTarget";
+			"buildConfigurationList" = "3AB36C5A259E6297ABD26694";
+			"buildPhases" = (
+				"2CA7AB56C261AC2F2D7F70EB",
+				"C4B9C286F4652F0A5D7E354F",
+				"5F241091B640F7446BA8DE1C",
+			);
+			"buildRules" = (
+			);
+			"dependencies" = (
+				"FE41E3343258A6882539145A",
+			);
+			"name" = "AccessHubCasinoUITests";
+			"productName" = "AccessHubCasinoUITests";
+			"productReference" = "9B7BED31F6F48AD5D908B2BC";
+			"productType" = "com.apple.product-type.bundle.ui-testing";
+		};
+		"98F54143AB4E86B28C3AFEE0" = {
+			"isa" = "PBXProject";
+			"attributes" = {
+				"BuildIndependentTargetsInParallel" = "YES";
+				"LastUpgradeCheck" = "1600";
+				"TargetAttributes" = {
+					"F75109BEB4DD8800DA6B45F8" = {
+						"CreatedOnToolsVersion" = "16.0";
+					};
+					"48021BA534050206D31D8AAD" = {
+						"CreatedOnToolsVersion" = "16.0";
+						"TestTargetID" = "F75109BEB4DD8800DA6B45F8";
+					};
+					"794AAC98ACE6EB716B86C3A5" = {
+						"CreatedOnToolsVersion" = "16.0";
+						"TestTargetID" = "F75109BEB4DD8800DA6B45F8";
+					};
+				};
+			};
+			"buildConfigurationList" = "640DC9EFD529235A8D9E2727";
+			"compatibilityVersion" = "Xcode 14.0";
+			"developmentRegion" = "en";
+			"hasScannedForEncodings" = 0;
+			"knownRegions" = (
+				"en",
+				"Base",
+			);
+			"mainGroup" = "870B3294C0CBD48AF6BBCC1B";
+			"productRefGroup" = "615B463D1028E4E24B674CF7";
+			"projectDirPath" = "";
+			"projectRoot" = "";
+			"targets" = (
+				"F75109BEB4DD8800DA6B45F8",
+				"48021BA534050206D31D8AAD",
+				"794AAC98ACE6EB716B86C3A5",
+			);
+		};
+	};
+	"rootObject" = "98F54143AB4E86B28C3AFEE0";
+}

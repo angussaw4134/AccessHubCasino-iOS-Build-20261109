@@ -1,0 +1,66 @@
+import XCTest
+@testable import AccessHubCasino
+
+final class ClientContractTests: XCTestCase {
+    func testCreditPrecisionAndMaximumAccountingValue() throws {
+        let fixture = Data(#"{"balanceUnits":1000000000000000,"availableRakebackUnits":10001,"games":{"blackjack":{"dealer":[{"rank":"A","suit":"spades"},null]}}}"#.utf8)
+        let decoded = try JSONValue.parse(fixture)
+        XCTAssertEqual(decoded["balanceUnits"].double, 1_000_000_000_000_000)
+        XCTAssertEqual(decoded["availableRakebackUnits"].double / Credits.scale, 0.010001)
+        XCTAssertFalse(decoded["games"]["blackjack"]["dealer"][1].exists)
+        XCTAssertEqual(decoded["games"]["blackjack"]["dealer"][0]["rank"].string,"A")
+        XCTAssertEqual(Credits.format(9_007_199_254_740_991,precision:6),"9,007,199,254.740991")
+        XCTAssertEqual(Credits.format(10_001,precision:6),"0.010001")
+        XCTAssertEqual(Credits.format(-1,precision:6),"-0.000001")
+        XCTAssertEqual(Credits.format(999_999),"1")
+    }
+    func testSavedRequestRoundTripsWithoutChangingIdOrUnits() throws {
+        let operation = PendingAction(id:"stable-action",body:["id":.string("stable-action"),"type":.string("mines.reveal"),"roundId":.string("round-123"),"tile":.number(24),"stakeUnits":.number(125_000_000)])
+        let data = try JSONEncoder().encode(operation)
+        XCTAssertEqual(try JSONDecoder().decode(PendingAction.self,from:data),operation)
+    }
+    func testStakeBoundariesAndInsufficientBalance() {
+        XCTAssertTrue(validStake("1",balance:1_000_000))
+        XCTAssertTrue(validStake("10000",balance:10_000_000_000))
+        for invalid in ["0","-1","1.5","10001","NaN","inf",""] { XCTAssertFalse(validStake(invalid,balance:10_000_000_000),invalid) }
+        XCTAssertFalse(validStake("101",balance:100_000_000))
+    }
+    func testPublicSnapshotKeepsHiddenValuesAndZeroesDistinct() throws {
+        let snapshot = try JSONValue.parse(Data(#"{"games":{"mines":{"mines":null,"revealed":[],"hitTile":0},"slots":{"grid":[["gem","bell","cherry"]]}},"crash":{"endAt":null,"multiplier":1}}"#.utf8))
+        XCTAssertFalse(snapshot["games"]["mines"]["mines"].exists)
+        XCTAssertTrue(snapshot["games"]["mines"]["hitTile"].exists)
+        XCTAssertEqual(snapshot["games"]["mines"]["hitTile"].int,0)
+        XCTAssertFalse(snapshot["crash"]["endAt"].exists)
+        XCTAssertEqual(snapshot["games"]["slots"]["grid"][0].array.map(\.string),["gem","bell","cherry"])
+    }
+    func testMemoizedRefillCooldownDoesNotBlockPendingQueueForever() {
+        XCTAssertTrue(ActionReceipt.isDefinitiveRejection(status:429,code:"refill_wait"))
+        XCTAssertFalse(ActionReceipt.isDefinitiveRejection(status:429,code:"rate_limit"))
+        XCTAssertFalse(ActionReceipt.isDefinitiveRejection(status:401,code:"unauthorized"))
+        XCTAssertFalse(ActionReceipt.isDefinitiveRejection(status:408,code:"timeout"))
+        XCTAssertFalse(ActionReceipt.isDefinitiveRejection(status:503,code:"unavailable"))
+        XCTAssertTrue(ActionReceipt.isDefinitiveRejection(status:409,code:"round_finished"))
+    }
+    func testOnlyMatchingAcceptedActionReceiptClearsPendingRequest() throws {
+        let operation = PendingAction(id:"request-123",body:["id":.string("request-123"),"type":.string("rewards.claim")],ownerID:"owner-123")
+        let valid = try JSONValue.parse(Data(#"{"action":{"id":"request-123","type":"rewards.claim","status":"accepted"},"state":{"user":{"id":"owner-123"},"balanceUnits":100,"serverTime":123}}"#.utf8))
+        XCTAssertTrue(ActionReceipt.confirms(valid,operation:operation))
+        XCTAssertFalse(ActionReceipt.confirms(.null,operation:operation))
+        XCTAssertFalse(ActionReceipt.confirms(valid["state"],operation:operation))
+        let wrongID = PendingAction(id:"different-request",body:operation.body,ownerID:operation.ownerID)
+        XCTAssertFalse(ActionReceipt.confirms(valid,operation:wrongID))
+        let wrongOwner = PendingAction(id:operation.id,body:operation.body,ownerID:"other-owner")
+        XCTAssertFalse(ActionReceipt.confirms(valid,operation:wrongOwner))
+        let rejected = try JSONValue.parse(Data(#"{"action":{"id":"request-123","type":"rewards.claim","status":"rejected"},"state":{"user":{"id":"owner-123"},"balanceUnits":100,"serverTime":123}}"#.utf8))
+        XCTAssertFalse(ActionReceipt.confirms(rejected,operation:operation))
+    }
+    func testCelebrationUsesPositiveNetAndRespectsReducedMotion() {
+        XCTAssertEqual(ResultPresentation.particleCount(committed:100,returned:99,reducedMotion:false),0)
+        XCTAssertEqual(ResultPresentation.particleCount(committed:100,returned:100,reducedMotion:false),0)
+        XCTAssertEqual(ResultPresentation.particleCount(committed:100,returned:101,reducedMotion:false),0)
+        XCTAssertEqual(ResultPresentation.particleCount(committed:100,returned:150,reducedMotion:false),6)
+        XCTAssertEqual(ResultPresentation.particleCount(committed:100,returned:200,reducedMotion:false),12)
+        XCTAssertEqual(ResultPresentation.particleCount(committed:100,returned:500,reducedMotion:false),18)
+        XCTAssertEqual(ResultPresentation.particleCount(committed:100,returned:500,reducedMotion:true),0)
+    }
+}
