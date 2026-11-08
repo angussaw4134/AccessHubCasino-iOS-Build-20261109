@@ -16,7 +16,7 @@ struct GameScreen: View {
                 case .slots: SlotsView()
                 }
                 NavigationLink { RulesView(game:game) } label: { HStack { Image(systemName:"book.closed"); Text("Rules, payouts & return"); Spacer(); Image(systemName:"chevron.right").font(.caption) }.font(.subheadline).padding(18).background(AH.panel,in:RoundedRectangle(cornerRadius:16)) }
-                Text("Access Hub Credits · No cash value\nFree, non-transferable and never redeemable.").font(.caption2).foregroundStyle(AH.muted).multilineTextAlignment(.center).frame(maxWidth:.infinity).padding(.top,4)
+                Text("Access Hub Credits\nNon-transferable and never redeemable.").font(.caption2).foregroundStyle(AH.muted).multilineTextAlignment(.center).frame(maxWidth:.infinity).padding(.top,4)
             }.padding(18)
         }.scrollDismissesKeyboard(.interactively).pageBackground().navigationTitle(game.title).navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -136,6 +136,13 @@ struct CrashView: View {
                     VStack(alignment:.leading,spacing:6) {
                         HStack { Text(phase == "waiting" ? "NEXT FLIGHT" : phase == "finished" ? "ROUND FINISHED" : "IN FLIGHT").font(.system(size:10,weight:.bold)).tracking(1.7); Spacer(); Text("\(round["onlinePlayers"].int) connected").font(.caption2) }.foregroundStyle(AH.muted)
                         Text(phase == "waiting" ? String(format:"%.1fs",max(0,(round["startAt"].double-now)/1000)) : String(format:"%.2f×",multiplier)).font(.system(size:52,weight:.semibold,design:.rounded)).monospacedDigit().foregroundStyle(phase == "finished" ? AH.danger : AH.text).contentTransition(.numericText())
+                        if let amount = CrashPotentialReturn.units(round:round,displayMultiplier:multiplier,online:store.online) {
+                            VStack(alignment:.leading,spacing:3) {
+                                Text(store.online ? "LIVE RETURN" : "LAST CONFIRMED RETURN").font(.system(size:9,weight:.semibold)).tracking(1).foregroundStyle(AH.muted)
+                                Text(Credits.format(amount) + " credits").font(.system(size:22,weight:.semibold,design:.rounded)).monospacedDigit().lineLimit(1).minimumScaleFactor(0.65).foregroundStyle(AH.emerald).accessibilityIdentifier("crashPotentialReturn")
+                                Text("Estimate; the server confirms collection.").font(.caption2).foregroundStyle(AH.muted)
+                            }.padding(.top,4)
+                        }
                         if phase == "waiting" { Text("Enter before the countdown ends.").font(.caption).foregroundStyle(AH.muted) }
                         if phase == "finished" { Text("The next shared round starts shortly.").font(.caption).foregroundStyle(AH.muted) }
                     }.padding(22)
@@ -423,8 +430,8 @@ struct SlotReel: View {
             let rowHeight: CGFloat = 70
             let distance = CGFloat(12+index*3)*rowHeight
             let offset = animating ? -(1-eased)*distance : 0
-            ZStack(alignment:.top) {
-                AH.background
+            AH.background
+              .overlay(alignment:.top) {
                 VStack(spacing:0) {
                     // The final three cells are the authoritative grid. Intermediate strip repeats
                     // those symbols; it never substitutes a different settled outcome.
@@ -434,9 +441,11 @@ struct SlotReel: View {
                             .background(row >= 0 && !animating && winningRows.contains(row) ? AH.emerald.opacity(0.15) : .clear)
                             .overlay(Rectangle().strokeBorder(row >= 0 && !animating && winningRows.contains(row) ? AH.emerald.opacity(0.7) : .clear,lineWidth:1))
                     }
-                }.offset(y:-24*rowHeight-offset)
+                }.fixedSize(horizontal:false,vertical:true).offset(y:-24*rowHeight-offset)
+              }
+              .overlay {
                 LinearGradient(colors:[.black.opacity(0.35),.clear,.clear,.black.opacity(0.35)],startPoint:.top,endPoint:.bottom).allowsHitTesting(false)
-            }.frame(width:width,height:210).clipShape(RoundedRectangle(cornerRadius:10)).overlay(RoundedRectangle(cornerRadius:10).strokeBorder(.white.opacity(0.08)))
+              }.frame(width:width,height:210).clipShape(RoundedRectangle(cornerRadius:10)).overlay(RoundedRectangle(cornerRadius:10).strokeBorder(.white.opacity(0.08)))
         }.accessibilityElement(children:.ignore).accessibilityLabel("Reel \(index+1): " + symbols.joined(separator:", "))
     }
 }

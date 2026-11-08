@@ -38,6 +38,9 @@ jobs:
         run: xcrun simctl list devices available -j | python3 casino-app/scripts/select_simulators.py >> "$GITHUB_ENV"
       - name: Test smaller iPhone
         id: small
+        env:
+          TEST_RUNNER_ACCESSHUB_TEST_USERNAME: ${{ secrets.ACCESSHUB_TEST_USERNAME_SMALL }}
+          TEST_RUNNER_ACCESSHUB_TEST_PASSWORD: ${{ secrets.ACCESSHUB_TEST_PASSWORD_SMALL }}
         run: |
           set -o pipefail
           # Local simulator signing preserves the app's Keychain entitlements.
@@ -47,8 +50,18 @@ jobs:
             -resultBundlePath casino-app/build/Small-iPhone.xcresult \
             ACCESSHUB_RUN_ONLINE_TESTS="$ONLINE_TESTS" CODE_SIGNING_ALLOWED=YES CODE_SIGN_IDENTITY=- \
             test 2>&1 | tee casino-app/build/small-iphone.log
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: AccessHubCasino-small-simulator-log
+          if-no-files-found: ignore
+          retention-days: 14
+          path: casino-app/build/small-iphone.log
       - name: Test larger iPhone
         if: ${{ always() && env.LARGE_ID != '' && steps.device.outcome == 'success' }}
+        env:
+          TEST_RUNNER_ACCESSHUB_TEST_USERNAME: ${{ secrets.ACCESSHUB_TEST_USERNAME_LARGE }}
+          TEST_RUNNER_ACCESSHUB_TEST_PASSWORD: ${{ secrets.ACCESSHUB_TEST_PASSWORD_LARGE }}
         run: |
           set -o pipefail
           xcodebuild -project casino-app/AccessHubCasino.xcodeproj -scheme AccessHubCasino \

@@ -73,20 +73,21 @@ struct CreditBalance: View {
             Text("ACCESS HUB CREDITS").font(.system(size: large ? 10 : 9, weight: .semibold)).tracking(1.7).foregroundStyle(AH.muted)
             HStack(alignment: .firstTextBaseline, spacing: 7) {
                 Text(Credits.format(units)).font(.system(size: large ? 36 : 19, weight: .semibold, design: .rounded)).monospacedDigit()
+                    .lineLimit(1).minimumScaleFactor(0.6)
                     .contentTransition(.numericText(value: units)).animation(store.reducedMotion ? nil : .easeOut(duration: 0.45), value: units)
                 if large { Image(systemName: "sparkle").font(.body).foregroundStyle(AH.emerald) }
             }
-            Text("No cash value").font(.caption2).foregroundStyle(AH.muted)
-        }.accessibilityElement(children: .combine)
+        }.accessibilityElement(children: .combine).accessibilityValue(Credits.format(units))
     }
 }
 
 struct GameArtwork: View {
     let game: CasinoGame
     var body: some View {
-        ZStack {
+        GeometryReader { geometry in
+          ZStack {
             AH.panel
-            if UIImage(named: game.art) != nil { Image(game.art).resizable().scaledToFill() }
+            if UIImage(named: game.art) != nil { Image(game.art).resizable().scaledToFill().frame(width:geometry.size.width,height:geometry.size.height).clipped() }
             else {
                 RadialGradient(colors: [AH.emerald.opacity(0.2), AH.panel], center: .center, startRadius: 0, endRadius: 240)
                 Group {
@@ -98,6 +99,7 @@ struct GameArtwork: View {
                     }
                 }
             }
+          }
         }.clipped().accessibilityHidden(true)
     }
 }

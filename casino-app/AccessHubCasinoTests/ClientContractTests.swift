@@ -3,6 +3,31 @@ import Security
 @testable import AccessHubCasino
 
 final class ClientContractTests: XCTestCase {
+    func testCrashPotentialReturnUsesOnlyCurrentRunningServerPosition() throws {
+        var round: JSONValue = .object(["id":.string("current"),"phase":.string("running"),"multiplier":.number(1.5),"position":.object(["roundId":.string("current"),"status":.string("running"),"stakeUnits":.number(3)])])
+        XCTAssertEqual(CrashPotentialReturn.units(round:round,displayMultiplier:1.5,online:true),4,"Fractional microcredits must be floored, not rounded.")
+        XCTAssertEqual(CrashPotentialReturn.units(round:round,displayMultiplier:1.9,online:true),5,"Online return follows the scene's bounded interpolation.")
+        XCTAssertEqual(CrashPotentialReturn.units(round:round,displayMultiplier:1.9,online:false),4,"Offline freezes at the server snapshot.")
+        var fields = round.object
+        fields["multiplier"] = .number(2)
+        round = .object(fields)
+        XCTAssertEqual(CrashPotentialReturn.units(round:round,displayMultiplier:2,online:true),6)
+        fields["phase"] = .string("finished")
+        XCTAssertNil(CrashPotentialReturn.units(round:.object(fields),displayMultiplier:2,online:true))
+        fields["phase"] = .string("running")
+        fields["position"] = .object(["roundId":.string("previous"),"status":.string("running"),"stakeUnits":.number(100)])
+        XCTAssertNil(CrashPotentialReturn.units(round:.object(fields),displayMultiplier:2,online:true),"Never show a previous round as collectable.")
+        fields["position"] = .object(["roundId":.string("current"),"status":.string("collected"),"stakeUnits":.number(100)])
+        XCTAssertNil(CrashPotentialReturn.units(round:.object(fields),displayMultiplier:2,online:true))
+        fields["position"] = .object(["roundId":.string("current"),"status":.string("running"),"stakeUnits":.number(100)])
+        fields["multiplier"] = .number(.infinity)
+        XCTAssertNil(CrashPotentialReturn.units(round:.object(fields),displayMultiplier:2,online:false))
+        XCTAssertNil(CrashPotentialReturn.units(round:.object(fields),displayMultiplier:.infinity,online:true))
+        fields["multiplier"] = .number(2.5)
+        fields["position"] = .object(["roundId":.string("current"),"status":.string("running"),"stakeUnits":.number(100),"autoCollect":.number(2)])
+        XCTAssertEqual(CrashPotentialReturn.units(round:.object(fields),displayMultiplier:2.8,online:true),200,"Never display beyond the configured auto-collection return.")
+        XCTAssertEqual(CrashPotentialReturn.units(round:.object(fields),displayMultiplier:3,online:false),200)
+    }
     func testSecureSessionCanBeCreatedReadAndUpdated() throws {
         let account = "test-session-" + UUID().uuidString
         defer {

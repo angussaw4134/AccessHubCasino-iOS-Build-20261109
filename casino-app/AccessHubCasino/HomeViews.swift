@@ -3,14 +3,14 @@ import SwiftUI
 struct HomeView: View {
     @EnvironmentObject var store: CasinoStore
     var body: some View {
-        ScrollView {
+        GeometryReader { geometry in
+          ScrollView {
             VStack(alignment:.leading,spacing:26) {
-                HStack { Brand(); Spacer(); Button { store.selectedTab = 4 } label: { AvatarView(name:store.state["settings"]["avatar"].string).frame(width:42,height:42) }.accessibilityLabel("Open profile") }
+                HStack { Brand().accessibilityIdentifier("homeBrand"); Spacer(); Button { store.selectedTab = 4 } label: { AvatarView(name:store.state["settings"]["avatar"].string).frame(width:42,height:42) }.accessibilityLabel("Open profile") }
                 Panel {
-                    HStack(alignment:.center) {
+                    VStack(alignment:.leading,spacing:12) {
                         CreditBalance(units:store.balance,large:true)
-                        Spacer()
-                        Button { store.selectedTab = 2 } label: { Image(systemName:"plus").font(.title3.weight(.semibold)).frame(width:44,height:44).background(AH.emerald.opacity(0.1),in:Circle()) }.accessibilityLabel("Free credits")
+                        if store.balance == 0 { Text("Credits are added by an administrator.").font(.caption).foregroundStyle(AH.muted) }
                     }
                 }
                 VStack(alignment:.leading,spacing:14) {
@@ -34,8 +34,9 @@ struct HomeView: View {
                 SectionTitle(title:"Your recent rounds")
                 HistoryList(items:Array(store.state["history"].array.prefix(5)))
                 NavigationLink("View complete history") { HistoryScreen(kind:"history",title:"Game history") }.font(.subheadline)
-                Text("Free credits. Real choices. No cash value.").font(.caption).foregroundStyle(AH.muted).frame(maxWidth:.infinity).padding(.vertical,8)
-            }.padding(20)
+                Text("Access Hub Credits. Your next move.").font(.caption).foregroundStyle(AH.muted).frame(maxWidth:.infinity).padding(.vertical,8)
+            }.padding(20).frame(width:geometry.size.width,alignment:.leading)
+          }
         }.pageBackground().toolbar(.hidden,for:.navigationBar).refreshable { await store.refresh() }
     }
 }
@@ -146,7 +147,7 @@ struct HistoryScreen: View {
                 if let failure { Text(failure).foregroundStyle(AH.danger); Button("Try again") { Task { await load() } }.buttonStyle(PrimaryButton(secondary:true)) }
                 if loading { ProgressView().padding() }
                 else if cursor != nil { Button("Load earlier activity") { Task { await load() } }.buttonStyle(PrimaryButton(secondary:true)) }
-                Text("All amounts are Access Hub Credits · No cash value").font(.caption).foregroundStyle(AH.muted)
+                Text("All amounts are Access Hub Credits").font(.caption).foregroundStyle(AH.muted)
             }.padding(20)
         }.pageBackground().navigationTitle(title).navigationBarTitleDisplayMode(.inline).task { if !loaded { await load() } }
     }

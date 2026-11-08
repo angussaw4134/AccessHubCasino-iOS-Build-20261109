@@ -1,25 +1,23 @@
 import SwiftUI
+import UIKit
 
 struct CreditsView: View {
     @EnvironmentObject var store: CasinoStore
     var body: some View {
         ScrollView {
             VStack(alignment:.leading,spacing:22) {
-                SectionTitle(title:"Room to explore.",caption:"Your credits are always free.")
+                SectionTitle(title:"Your Access Hub Credits",caption:"Credits are added by an administrator.")
                 Panel {
                     VStack(alignment:.leading,spacing:22) {
                         CreditBalance(units:store.balance,large:true).accessibilityIdentifier("creditsBalance")
-                        TimelineView(.periodic(from:.now,by:1)) { _ in
-                            let seconds = max(0,Int(ceil((store.state["refillAvailableAt"].double-store.serverNow)/1000)))
-                            Button { Task { await store.action("credits.refill") } } label: { HStack { Image(systemName:"plus.circle"); Text(seconds == 0 ? "Add 10,000 free credits" : "Next refill in \(seconds)s") } }.buttonStyle(PrimaryButton()).disabled(!store.canAct || seconds > 0).accessibilityIdentifier("freeRefill")
-                        }
+                        Text(store.balance == 0 ? "Your account starts at 0. Credits are added by an administrator." : "Your administrator's credit additions appear in your history.").font(.subheadline).foregroundStyle(AH.muted).accessibilityIdentifier("adminCreditsInformation")
                         Text("No purchase, payment or transfer. Credits cannot be redeemed for money or prizes.").font(.caption).foregroundStyle(AH.muted)
                     }
                 }
                 NavigationLink { RakebackView() } label: {
                     Panel { HStack { VStack(alignment:.leading,spacing:7) { Text("Your 1% return").font(.headline); Text("\(Credits.format(store.availableRewards,precision:6)) credits available").font(.subheadline).foregroundStyle(AH.emerald) }; Spacer(); Image(systemName:"arrow.up.right").foregroundStyle(AH.emerald) } }
                 }.buttonStyle(.plain)
-                SectionTitle(title:"Every credit, accounted for.",caption:"Stakes, results, refills and claimed rakeback.")
+                SectionTitle(title:"Every credit, accounted for.",caption:"Administrator additions, stakes, results and claimed rakeback.")
                 HistoryList(items:Array(store.state["ledger"].array.prefix(12)),kind:"ledger")
                 NavigationLink("View complete credit history") { HistoryScreen(kind:"ledger",title:"Credit history") }.font(.subheadline)
             }.padding(20)
@@ -37,7 +35,7 @@ struct RakebackView: View {
                     VStack(alignment:.leading,spacing:22) {
                         Text("AVAILABLE TO CLAIM").font(.system(size:10,weight:.bold)).tracking(1.8).foregroundStyle(AH.muted)
                         Text(Credits.format(store.availableRewards,precision:6)).font(.system(size:38,weight:.semibold,design:.rounded)).monospacedDigit().contentTransition(.numericText()).accessibilityIdentifier("rakebackAvailable")
-                        Text("Access Hub Credits · No cash value").font(.caption).foregroundStyle(AH.muted)
+                        Text("Access Hub Credits").font(.caption).foregroundStyle(AH.muted)
                         HStack { Metric(title:"Current return rate",value:"1%",color:AH.emerald); Metric(title:"Total claimed",value:Credits.format(store.state["totalClaimedUnits"].double,precision:6)) }
                         Button(store.busy ? "Confirming claim…" : "Claim All") { Task { await store.action("rewards.claim") } }.buttonStyle(PrimaryButton()).disabled(!store.canAct || store.availableRewards <= 0).accessibilityIdentifier("claimRakeback")
                     }
@@ -75,7 +73,7 @@ struct ProgressScreen: View {
                 SectionTitle(title:"Learn your way around")
                 Panel { VStack(alignment:.leading,spacing:15) {
                     Text("Welcome to AccessHub").font(.headline)
-                    Text("Pick a game, read its rules, and use free credits to practice. Stakes can be lost. You can always claim a free refill in Credits. There is no cash value, purchasing, transfer or redemption.").font(.subheadline).foregroundStyle(AH.muted)
+                    Text("Pick a game and read its rules. Your account starts at 0 Access Hub Credits; credits are added by an administrator. Stakes can be lost. Credits cannot be purchased, transferred or redeemed.").font(.subheadline).foregroundStyle(AH.muted)
                     LearnButton(milestone:"welcome",title:"Complete the introduction")
                     Divider()
                     ForEach(CasinoGame.allCases) { game in
@@ -160,10 +158,20 @@ struct ProfileView: View {
     @State private var confirmLogout = false
     @State private var confirmDelete = false
     @State private var support = false
+    @State private var copiedAccountID = false
     var body: some View {
         ScrollView {
             VStack(alignment:.leading,spacing:22) {
                 HStack(spacing:16) { AvatarView(name:store.state["settings"]["avatar"].string).frame(width:70,height:70); VStack(alignment:.leading,spacing:7) { Text(store.state["user"]["isGuest"].bool ? "Your guest profile" : store.state["user"]["username"].string).font(.title2.weight(.semibold)); Text("Level \(store.state["progress"]["level"].int) · AccessHub member").font(.caption).foregroundStyle(AH.muted) } }
+                Panel { VStack(alignment:.leading,spacing:12) {
+                    Text("Your account ID").font(.headline)
+                    Text(store.state["user"]["id"].string).font(.system(.caption,design:.monospaced)).textSelection(.enabled).accessibilityIdentifier("profileAccountID")
+                    Text("Share this ID with your administrator when credits need to be added.").font(.caption).foregroundStyle(AH.muted)
+                    Button(copiedAccountID ? "Copied" : "Copy account ID") {
+                        UIPasteboard.general.string = store.state["user"]["id"].string
+                        copiedAccountID = true
+                    }.font(.subheadline.weight(.semibold)).accessibilityIdentifier("copyAccountID")
+                } }
                 if store.state["user"]["isGuest"].bool {
                     Panel { VStack(alignment:.leading,spacing:14) { Text("Keep your progress with you.").font(.headline); Text("Save this guest account with a username and password for access on another iPhone.").font(.subheadline).foregroundStyle(AH.muted); Button("Save my progress") { register = true }.buttonStyle(PrimaryButton()).disabled(!store.canAct); Button("Sign in to an existing account") { login = true }.font(.caption).disabled(store.busy || store.pending != nil) } }
                 }
@@ -182,9 +190,10 @@ struct ProfileView: View {
                 } }
                 Panel { VStack(spacing:18) { settingToggle("Sound effects",key:"sound"); settingToggle("Haptic feedback",key:"haptics"); settingToggle("Reduce motion",key:"reducedMotion"); Text("The iPhone's Reduce Motion setting is always respected. Sound and haptics are independent.").font(.caption2).foregroundStyle(AH.muted).frame(maxWidth:.infinity,alignment:.leading) } }
                 Panel { VStack(alignment:.leading,spacing:18) { Button { support = true } label: { Label("Help & support",systemImage:"questionmark.circle") }; NavigationLink { HistoryScreen(kind:"history",title:"Game history") } label: { Label("Game history",systemImage:"clock") }; Button { confirmLogout = true } label: { Label("Sign out",systemImage:"rectangle.portrait.and.arrow.right") }.disabled(!store.canAct || store.hasUnresolvedGames); Button(role:.destructive) { confirmDelete = true } label: { Label("Delete account and data",systemImage:"trash") }.disabled(!store.canAct || store.hasUnresolvedGames); if store.hasUnresolvedGames { Text("Finish your active rounds before signing out or deleting this account.").font(.caption2).foregroundStyle(AH.muted) } }.font(.subheadline) }
-                Text("AccessHub Casino · v1.0\nAccess Hub Credits have no cash value.").font(.caption2).foregroundStyle(AH.muted).multilineTextAlignment(.center).frame(maxWidth:.infinity)
+                Text("AccessHub Casino · v1.0 · Build 2\nAccess Hub Credits").font(.caption2).foregroundStyle(AH.muted).multilineTextAlignment(.center).frame(maxWidth:.infinity)
             }.padding(20)
         }.pageBackground().navigationTitle("Profile").navigationBarTitleDisplayMode(.inline)
+            .onChange(of:store.state["user"]["id"].string) { _,_ in copiedAccountID = false }
             .sheet(isPresented:$register) { AccountView(register:true) }
             .sheet(isPresented:$login) { AccountView(register:false) }
             .sheet(isPresented:$support) { SupportView() }
@@ -234,7 +243,7 @@ struct SupportView: View {
                     Text("A round was interrupted").font(.headline)
                     Text("Open the app again. The server restores your board, hands and accepted entries. Saved requests are retried with the same ID so a stake or claim is never applied twice. Automatic Crash collection runs even while you are disconnected.").font(.subheadline).foregroundStyle(AH.muted)
                     Text("Your balance looks different").font(.headline)
-                    Text("Credits records every change, including stakes, returns, refills and rakeback. Open the full credit history to inspect the originating round.").font(.subheadline).foregroundStyle(AH.muted)
+                    Text("Credits records every change, including administrator additions, stakes, returns and rakeback. Open the full credit history to inspect the originating round.").font(.subheadline).foregroundStyle(AH.muted)
                     NavigationLink("Open credit history") { HistoryScreen(kind:"ledger",title:"Credit history") }
                     Text("Saved accounts").font(.headline)
                     Text("Guest access is tied to this device. Create a username and password in Profile before changing devices. There is no email reset; keep your password in a secure password manager.").font(.subheadline).foregroundStyle(AH.muted)
@@ -243,7 +252,7 @@ struct SupportView: View {
                     Text("Service information").font(.headline)
                     Text("Share this diagnostic summary with the person who provided your app build. It contains no password or session token.").font(.subheadline).foregroundStyle(AH.muted)
                     ShareLink(item:"AccessHub Casino v1.0\nService: \(store.baseURL.absoluteString)\nStatus: \(store.online ? "connected" : "offline")\nDate: \(Date().ISO8601Format())") { Label("Share diagnostics",systemImage:"square.and.arrow.up") }
-                    Text("Credits are free and have no cash value. There are no payments, withdrawals, prizes or transfers.").font(.caption).foregroundStyle(AH.muted)
+                    Text("Credits are added by an administrator. There are no payments, withdrawals, prizes or transfers.").font(.caption).foregroundStyle(AH.muted)
                 } }
             }.padding(20) }.pageBackground().navigationTitle("Help & support").navigationBarTitleDisplayMode(.inline).toolbar { ToolbarItem(placement:.cancellationAction) { Button("Done") { dismiss() } } }
         }

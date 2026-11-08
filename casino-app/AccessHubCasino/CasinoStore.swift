@@ -63,7 +63,7 @@ import UIKit
             if guestID == nil { guestID = UUID().uuidString; try SessionVault.write(guestID!, account: "guest-id") }
             let response = try await request("/v1/guest", body: ["id": .string(guestID!)], authenticated: false)
             try acceptSession(response)
-            notice = pending == nil ? "Your Access Hub Credits are ready." : "Guest session restored. Checking your saved request."
+            notice = pending == nil ? "Your account is ready. Credits are added by an administrator." : "Guest session restored. Checking your saved request."
             startPolling()
         } catch { self.error = error.localizedDescription }
     }

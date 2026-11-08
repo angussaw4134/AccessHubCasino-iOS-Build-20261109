@@ -78,6 +78,30 @@ enum CasinoGame: String, CaseIterable, Identifiable {
     }
 }
 
+enum CrashPotentialReturn {
+    /// Only the server's current, running position can produce a live estimate.
+    /// The scene supplies its bounded clock interpolation; offline uses the snapshot.
+    /// Auto collection caps this estimate while its accepted result is in transit.
+    static func units(round: JSONValue, displayMultiplier: Double, online: Bool) -> Double? {
+        let position = round["position"]
+        let stake = position["stakeUnits"].double
+        var multiplier = online ? displayMultiplier : round["multiplier"].double
+        guard round["phase"].string == "running",
+              position["status"].string == "running",
+              position["roundId"].string == round["id"].string,
+              !round["id"].string.isEmpty,
+              stake.isFinite, stake > 0, multiplier.isFinite,
+              multiplier >= 1, multiplier <= 100 else { return nil }
+        if position["autoCollect"].exists {
+            let threshold = position["autoCollect"].double
+            guard threshold.isFinite, threshold >= 1.01, threshold <= 100 else { return nil }
+            multiplier = min(multiplier,threshold)
+        }
+        let amount = floor(stake * multiplier)
+        return amount <= 9_007_199_254_740_991 ? amount : nil
+    }
+}
+
 struct PendingAction: Codable, Equatable {
     let id: String
     let body: [String: JSONValue]

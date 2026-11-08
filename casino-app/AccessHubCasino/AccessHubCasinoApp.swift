@@ -61,7 +61,7 @@ struct WelcomeView: View {
                     VStack(alignment:.leading,spacing:10) {
                         Text("THE ART OF THE NEXT MOVE").font(.system(size:10,weight:.bold)).tracking(2).foregroundStyle(AH.emerald)
                         Text("A little strategy.\nA little possibility.").font(.system(size:34,weight:.medium,design:.serif))
-                        Text("Four original games. 10,000 free Access Hub Credits to explore them.").font(.subheadline).foregroundStyle(AH.muted)
+                        Text("Four original games. Start at 0 Access Hub Credits. Credits are added by an administrator.").font(.subheadline).foregroundStyle(AH.muted)
                     }
                     VStack(spacing:12) {
                         Button {
@@ -76,7 +76,7 @@ struct WelcomeView: View {
                         }.buttonStyle(PrimaryButton()).disabled(store.busy || store.connecting).accessibilityIdentifier("enterGuest")
                         Button("Sign in to saved progress") { signingIn = true }.font(.subheadline.weight(.medium)).padding(8)
                     }
-                    Text("Access Hub Credits have no cash value. They are free, cannot be purchased or transferred, and cannot be redeemed for money or prizes.").font(.caption).foregroundStyle(AH.muted).fixedSize(horizontal:false,vertical:true)
+                    Text("Access Hub Credits cannot be purchased or transferred, and cannot be redeemed for money or prizes.").font(.caption).foregroundStyle(AH.muted).fixedSize(horizontal:false,vertical:true)
                 }.padding(24).frame(minHeight:geometry.size.height,alignment:.top)
             }
         }.sheet(isPresented:$signingIn) { AccountView(register:false) }.pageBackground()

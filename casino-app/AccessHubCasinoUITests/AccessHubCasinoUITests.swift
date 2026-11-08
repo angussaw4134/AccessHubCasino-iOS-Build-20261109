@@ -25,6 +25,10 @@ final class AccessHubCasinoUITests: XCTestCase {
     func testConnectedNavigationAndCompletedRounds() throws {
         try XCTSkipUnless(ProcessInfo.processInfo.environment["ACCESSHUB_RUN_ONLINE_TESTS"] == "1","Requires explicit online test opt-in and a deployed backend.")
         let app = XCUIApplication(); app.launch(); connect(app)
+        let brand = app.descendants(matching:.any).matching(identifier:"homeBrand").firstMatch
+        XCTAssertTrue(app.frame.contains(brand.frame),"Home branding must fit within the small iPhone viewport.")
+        XCTAssertTrue(app.frame.contains(app.buttons["Open profile"].frame),"Profile shortcut must not be clipped.")
+        attach(app,"Home funded account")
         for tab in ["Games","Credits","Progress","Profile","Home"] { app.tabBars.buttons[tab].tap(); XCTAssertTrue(app.tabBars.buttons[tab].isSelected) }
 
         openGame("Blackjack",app:app)
@@ -57,17 +61,12 @@ final class AccessHubCasinoUITests: XCTestCase {
         let oldSlots = resultID(app,"slots")
         let spin = scrollTo("slotsSpin",app:app); spin.tap()
         waitUntil(timeout:25) { self.result(app,"slots",excluding:oldSlots).exists }
+        for _ in 0..<5 where !app.staticTexts["EMERALD VAULT"].isHittable { app.swipeDown() }
         attach(app,"Slots actual outcome")
 
         waitUntil(timeout:5) { app.tabBars.buttons["Credits"].isHittable }
         app.tabBars.buttons["Credits"].tap()
-        let refill = app.buttons["freeRefill"]
-        if refill.waitForExistence(timeout:5) && refill.isEnabled {
-            let balance = app.descendants(matching:.any).matching(identifier:"creditsBalance").firstMatch
-            let before = balance.label
-            refill.tap()
-            waitUntil(timeout:20) { balance.label != before }
-        }
+        XCTAssertFalse(app.buttons["freeRefill"].exists)
         app.tabBars.buttons["Progress"].tap()
         app.buttons["rakebackShortcut"].tap()
         let claim = app.buttons["claimRakeback"]
@@ -130,12 +129,37 @@ final class AccessHubCasinoUITests: XCTestCase {
         let guest = app.buttons["enterGuest"]
         let home = app.tabBars.buttons["Home"]
         waitUntil(timeout:30) { home.exists || (guest.exists && guest.isEnabled && guest.isHittable) }
-        if !home.exists { guest.tap() }
+        let createdGuest = !home.exists
+        if createdGuest { guest.tap() }
         waitUntil(timeout:30) { home.exists || app.alerts.firstMatch.exists }
         if app.alerts.firstMatch.exists {
             XCTFail("Guest access failed: " + app.alerts.firstMatch.staticTexts.allElementsBoundByIndex.map(\.label).joined(separator:" · "))
         }
         XCTAssertTrue(home.waitForExistence(timeout:30))
+        if createdGuest {
+            app.tabBars.buttons["Credits"].tap()
+            let balance = app.descendants(matching:.any).matching(identifier:"creditsBalance").firstMatch
+            XCTAssertTrue(balance.waitForExistence(timeout:10))
+            XCTAssertEqual(balance.value as? String,"0","A new account starts with zero credits.")
+            XCTAssertFalse(app.buttons["freeRefill"].exists)
+            XCTAssertTrue(app.staticTexts["adminCreditsInformation"].exists)
+            attach(app,"New guest starts at zero")
+            app.tabBars.buttons["Profile"].tap()
+            let username = ProcessInfo.processInfo.environment["ACCESSHUB_TEST_USERNAME"] ?? ""
+            let password = ProcessInfo.processInfo.environment["ACCESSHUB_TEST_PASSWORD"] ?? ""
+            XCTAssertFalse(username.isEmpty,"An administrator-funded test account must be configured.")
+            XCTAssertFalse(password.isEmpty,"The test account password must be supplied to the runner.")
+            scrollTo("Sign in to an existing account",app:app).tap()
+            let usernameField = app.textFields["username"]
+            XCTAssertTrue(usernameField.waitForExistence(timeout:10))
+            usernameField.tap(); usernameField.typeText(username)
+            let passwordField = app.secureTextFields["password"]
+            passwordField.tap(); passwordField.typeText(password)
+            app.buttons["Sign in"].tap()
+            XCTAssertTrue(app.buttons["Continue"].waitForExistence(timeout:30))
+            app.buttons["Continue"].tap()
+            app.tabBars.buttons["Home"].tap()
+        }
     }
     private func waitUntil(timeout:TimeInterval,_ condition:@escaping () -> Bool) {
         let expectation = XCTNSPredicateExpectation(predicate:NSPredicate { _,_ in
