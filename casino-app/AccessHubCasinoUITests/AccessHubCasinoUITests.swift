@@ -99,6 +99,62 @@ final class AccessHubCasinoUITests: XCTestCase {
         waitUntil(timeout:65) { self.result(app,"crash",excluding:previousResult).exists }
         attach(app,"Crash resolved position")
     }
+    /// Independent live inspection: creates only a new zero-credit guest.
+    /// No fixture login, credit grant or wager is performed.
+    func testZeroCreditGuestNavigation() throws {
+        let environment = ProcessInfo.processInfo.environment
+        try XCTSkipUnless(environment["ACCESSHUB_RUN_ZERO_CREDIT_TESTS"] == "1" && environment["ACCESSHUB_RUN_ONLINE_TESTS"] != "1","Requires the separate zero-credit opt-in with funded tests disabled.")
+        let app = launchApplication()
+        let guest = app.buttons["enterGuest"]
+        XCTAssertTrue(guest.waitForExistence(timeout:15),"Use a fresh simulator; an existing account must not be changed by this test.")
+        waitEnabled(guest,timeout:20); guest.tap()
+        XCTAssertTrue(app.tabBars.buttons["Home"].waitForExistence(timeout:30))
+        app.tabBars.buttons["Credits"].tap()
+        let balance = app.descendants(matching:.any).matching(identifier:"creditsBalance").firstMatch
+        XCTAssertTrue(balance.waitForExistence(timeout:10))
+        XCTAssertEqual(balance.value as? String,"0")
+        XCTAssertFalse(app.buttons["freeRefill"].exists)
+        XCTAssertTrue(app.staticTexts["adminCreditsInformation"].exists)
+        attach(app,"Zero-state credit policy")
+
+        app.tabBars.buttons["Profile"].tap()
+        let accountID = app.staticTexts["profileAccountID"]
+        XCTAssertTrue(accountID.waitForExistence(timeout:10))
+        let generatedID = accountID.label
+        XCTAssertFalse(generatedID.isEmpty)
+        addTeardownBlock { [self] in
+            // Capture the state first so a later cleanup cannot hide a failure.
+            attach(app,"Zero-state before guest cleanup")
+            app.tabBars.buttons["Profile"].tap()
+            guard app.staticTexts["profileAccountID"].label == generatedID else {
+                XCTFail("Cleanup refused: this is not the guest created by the zero-credit test.")
+                return
+            }
+            scrollTo("Delete account and data",app:app).tap()
+            XCTAssertTrue(app.alerts.buttons["Delete permanently"].waitForExistence(timeout:5))
+            app.alerts.buttons["Delete permanently"].tap()
+            XCTAssertTrue(guest.waitForExistence(timeout:30),"The generated zero-credit guest must be removed after inspection.")
+        }
+        scrollTo("copyAccountID",app:app).tap()
+        XCTAssertEqual(app.buttons["copyAccountID"].label,"Copied")
+        attach(app,"Zero-state profile account ID")
+        for tab in ["Games","Credits","Progress","Profile","Home"] {
+            app.tabBars.buttons[tab].tap()
+            XCTAssertTrue(app.tabBars.buttons[tab].isSelected)
+        }
+        let brand = app.descendants(matching:.any).matching(identifier:"homeBrand").firstMatch
+        XCTAssertTrue(app.frame.contains(brand.frame))
+        XCTAssertTrue(app.frame.contains(app.buttons["Open profile"].frame))
+        XCTAssertFalse(app.buttons["Free credits"].exists)
+        attach(app,"Zero-state Home layout")
+        for (name,control) in [("Blackjack","blackjackDeal"),("Mines","minesStart"),("Slots","slotsSpin"),("Crash","crashEnter")] {
+            openGame(name,app:app)
+            let action = scrollTo(control,app:app)
+            XCTAssertFalse(action.isEnabled,"A zero-credit account cannot stake in \(name).")
+            for _ in 0..<4 { app.swipeDown() }
+            attach(app,"Zero-state " + name)
+        }
+    }
     private func launchApplication() -> XCUIApplication {
         let app = XCUIApplication()
         app.launch()

@@ -8,6 +8,11 @@ on:
         required: true
         default: false
         type: boolean
+      zero_credit_tests:
+        description: 'Inspect a new zero-credit guest without fixture credentials or wagers'
+        required: true
+        default: false
+        type: boolean
   push:
     paths: ['casino-app/**', '.github/workflows/build-casino-app.yml']
 
@@ -20,6 +25,7 @@ jobs:
     timeout-minutes: 40
     env:
       ONLINE_TESTS: ${{ inputs.online_tests && '1' || '0' }}
+      TEST_RUNNER_ACCESSHUB_RUN_ZERO_CREDIT_TESTS: ${{ inputs.zero_credit_tests && !inputs.online_tests && '1' || '0' }}
     steps:
       - uses: actions/checkout@v4
       - name: Build arm64 iPhone IPA for loader signing
@@ -39,8 +45,8 @@ jobs:
       - name: Test smaller iPhone
         id: small
         env:
-          TEST_RUNNER_ACCESSHUB_TEST_USERNAME: ${{ secrets.ACCESSHUB_TEST_USERNAME_SMALL }}
-          TEST_RUNNER_ACCESSHUB_TEST_PASSWORD: ${{ secrets.ACCESSHUB_TEST_PASSWORD_SMALL }}
+          TEST_RUNNER_ACCESSHUB_TEST_USERNAME: ${{ inputs.online_tests && secrets.ACCESSHUB_TEST_USERNAME_SMALL || '' }}
+          TEST_RUNNER_ACCESSHUB_TEST_PASSWORD: ${{ inputs.online_tests && secrets.ACCESSHUB_TEST_PASSWORD_SMALL || '' }}
         run: |
           set -o pipefail
           # Local simulator signing preserves the app's Keychain entitlements.
@@ -54,10 +60,10 @@ jobs:
         id: sanitize_small
         if: always()
         env:
-          ACCESSHUB_TEST_USERNAME_SMALL: ${{ secrets.ACCESSHUB_TEST_USERNAME_SMALL }}
-          ACCESSHUB_TEST_PASSWORD_SMALL: ${{ secrets.ACCESSHUB_TEST_PASSWORD_SMALL }}
-          ACCESSHUB_TEST_USERNAME_LARGE: ${{ secrets.ACCESSHUB_TEST_USERNAME_LARGE }}
-          ACCESSHUB_TEST_PASSWORD_LARGE: ${{ secrets.ACCESSHUB_TEST_PASSWORD_LARGE }}
+          ACCESSHUB_TEST_USERNAME_SMALL: ${{ inputs.online_tests && secrets.ACCESSHUB_TEST_USERNAME_SMALL || '' }}
+          ACCESSHUB_TEST_PASSWORD_SMALL: ${{ inputs.online_tests && secrets.ACCESSHUB_TEST_PASSWORD_SMALL || '' }}
+          ACCESSHUB_TEST_USERNAME_LARGE: ${{ inputs.online_tests && secrets.ACCESSHUB_TEST_USERNAME_LARGE || '' }}
+          ACCESSHUB_TEST_PASSWORD_LARGE: ${{ inputs.online_tests && secrets.ACCESSHUB_TEST_PASSWORD_LARGE || '' }}
         run: python3 casino-app/scripts/sanitize-test-evidence.py casino-app/build
       - uses: actions/upload-artifact@v4
         if: ${{ always() && steps.sanitize_small.outcome == 'success' }}
@@ -69,8 +75,8 @@ jobs:
       - name: Test larger iPhone
         if: ${{ always() && env.LARGE_ID != '' && steps.device.outcome == 'success' }}
         env:
-          TEST_RUNNER_ACCESSHUB_TEST_USERNAME: ${{ secrets.ACCESSHUB_TEST_USERNAME_LARGE }}
-          TEST_RUNNER_ACCESSHUB_TEST_PASSWORD: ${{ secrets.ACCESSHUB_TEST_PASSWORD_LARGE }}
+          TEST_RUNNER_ACCESSHUB_TEST_USERNAME: ${{ inputs.online_tests && secrets.ACCESSHUB_TEST_USERNAME_LARGE || '' }}
+          TEST_RUNNER_ACCESSHUB_TEST_PASSWORD: ${{ inputs.online_tests && secrets.ACCESSHUB_TEST_PASSWORD_LARGE || '' }}
         run: |
           set -o pipefail
           xcodebuild -project casino-app/AccessHubCasino.xcodeproj -scheme AccessHubCasino \
@@ -95,10 +101,10 @@ jobs:
         id: sanitize_final
         if: always()
         env:
-          ACCESSHUB_TEST_USERNAME_SMALL: ${{ secrets.ACCESSHUB_TEST_USERNAME_SMALL }}
-          ACCESSHUB_TEST_PASSWORD_SMALL: ${{ secrets.ACCESSHUB_TEST_PASSWORD_SMALL }}
-          ACCESSHUB_TEST_USERNAME_LARGE: ${{ secrets.ACCESSHUB_TEST_USERNAME_LARGE }}
-          ACCESSHUB_TEST_PASSWORD_LARGE: ${{ secrets.ACCESSHUB_TEST_PASSWORD_LARGE }}
+          ACCESSHUB_TEST_USERNAME_SMALL: ${{ inputs.online_tests && secrets.ACCESSHUB_TEST_USERNAME_SMALL || '' }}
+          ACCESSHUB_TEST_PASSWORD_SMALL: ${{ inputs.online_tests && secrets.ACCESSHUB_TEST_PASSWORD_SMALL || '' }}
+          ACCESSHUB_TEST_USERNAME_LARGE: ${{ inputs.online_tests && secrets.ACCESSHUB_TEST_USERNAME_LARGE || '' }}
+          ACCESSHUB_TEST_PASSWORD_LARGE: ${{ inputs.online_tests && secrets.ACCESSHUB_TEST_PASSWORD_LARGE || '' }}
         run: python3 casino-app/scripts/sanitize-test-evidence.py casino-app/build
       - uses: actions/upload-artifact@v4
         if: ${{ always() && steps.sanitize_final.outcome == 'success' }}

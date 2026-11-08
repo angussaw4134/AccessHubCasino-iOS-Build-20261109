@@ -1,6 +1,6 @@
 # AccessHub Casino for iPhone
 
-Native SwiftUI application, iOS 17+, Xcode 16 or newer, no third-party runtime dependencies. All stakes, results, balances, account settings, progress and rakeback are resolved by the Cloudflare backend. All amounts are **Access Hub Credits — No cash value**.
+Native SwiftUI application, iOS 17+, Xcode 16 or newer, no third-party runtime dependencies. All stakes, results, balances, account settings, progress and rakeback are resolved by the Cloudflare backend. All amounts are **Access Hub Credits**, which cannot be purchased, transferred or redeemed.
 
 Build 2 starts new accounts at 0. Only an administrator can add credits; players have no refill or credit-purchase control. Profile displays a copyable account ID for the administrator. Game returns and earned rakeback claims continue to work normally. The interface uses “Access Hub Credits” without a “No cash value” label; the currency remains non-transferable and cannot be redeemed.
 
@@ -39,6 +39,8 @@ This builds the Release `iphoneos` target without a signing identity and package
 `scripts/validate_sources.py` checks resources, plists, storyboard, scheme, asset files and, when optional Python parsers are installed, Swift syntax and Xcode object references. This is **not** a Swift type check, Xcode compilation or simulator test.
 
 `ClientContractTests` covers integer credit precision, hidden-card/hidden-board null values, durable request serialization, Keychain persistence, stake validation and Crash potential-return state/rounding. `AccessHubCasinoUITests` contains launch/account-form checks and explicit opt-in connected game/navigation tests. The connected tests create a genuine guest, verify its zero balance and absence of refill controls, then sign in through the UI to a separate administrator-funded test account. Each game test waits for a **new** round identifier and its actual settlement, so an old result cannot satisfy it. Mines handles either a mine or a safe-tile collection; Blackjack handles natural settlement or an available stand; Crash follows actual shared timing. Use fresh simulators for acceptance runs.
+
+The independent `zero_credit_tests` workflow option runs only with `online_tests` disabled. It needs no fixture credentials: it creates a new guest through the ordinary UI, checks zero balance, administrator-only funding information, the copyable account ID, all five tabs, Home width and the four game scenes with disabled stake actions. It captures screenshots without wagering or requesting credits, then deletes only that generated guest after checking its account ID. It requires a fresh simulator and refuses to replace an existing account. This zero-state test runs alphabetically last. Skipped tests that never launched the app do not capture teardown screenshots.
 
 ```sh
 xcrun simctl list devices available

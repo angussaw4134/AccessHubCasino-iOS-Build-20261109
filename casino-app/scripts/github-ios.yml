@@ -12,6 +12,11 @@ on:
         required: true
         default: false
         type: boolean
+      zero_credit_tests:
+        description: 'Inspect a new zero-credit guest without fixture credentials or wagers'
+        required: true
+        default: false
+        type: boolean
 
 permissions:
   contents: read
@@ -22,6 +27,7 @@ jobs:
     timeout-minutes: 35
     env:
       ONLINE_TESTS: ${{ inputs.online_tests && '1' || '0' }}
+      TEST_RUNNER_ACCESSHUB_RUN_ZERO_CREDIT_TESTS: ${{ inputs.zero_credit_tests && !inputs.online_tests && '1' || '0' }}
     steps:
       - uses: actions/checkout@v4
       - name: Compile native simulator app with local signing
@@ -37,8 +43,8 @@ jobs:
       - name: Test smaller iPhone
         id: small
         env:
-          TEST_RUNNER_ACCESSHUB_TEST_USERNAME: ${{ secrets.ACCESSHUB_TEST_USERNAME_SMALL }}
-          TEST_RUNNER_ACCESSHUB_TEST_PASSWORD: ${{ secrets.ACCESSHUB_TEST_PASSWORD_SMALL }}
+          TEST_RUNNER_ACCESSHUB_TEST_USERNAME: ${{ inputs.online_tests && secrets.ACCESSHUB_TEST_USERNAME_SMALL || '' }}
+          TEST_RUNNER_ACCESSHUB_TEST_PASSWORD: ${{ inputs.online_tests && secrets.ACCESSHUB_TEST_PASSWORD_SMALL || '' }}
         run: |
           set -o pipefail
           echo "Testing $SMALL_NAME"
@@ -50,8 +56,8 @@ jobs:
       - name: Test larger iPhone
         if: ${{ always() && env.LARGE_ID != '' }}
         env:
-          TEST_RUNNER_ACCESSHUB_TEST_USERNAME: ${{ secrets.ACCESSHUB_TEST_USERNAME_LARGE }}
-          TEST_RUNNER_ACCESSHUB_TEST_PASSWORD: ${{ secrets.ACCESSHUB_TEST_PASSWORD_LARGE }}
+          TEST_RUNNER_ACCESSHUB_TEST_USERNAME: ${{ inputs.online_tests && secrets.ACCESSHUB_TEST_USERNAME_LARGE || '' }}
+          TEST_RUNNER_ACCESSHUB_TEST_PASSWORD: ${{ inputs.online_tests && secrets.ACCESSHUB_TEST_PASSWORD_LARGE || '' }}
         run: |
           set -o pipefail
           echo "Testing $LARGE_NAME"
@@ -76,10 +82,10 @@ jobs:
         id: sanitize
         if: always()
         env:
-          ACCESSHUB_TEST_USERNAME_SMALL: ${{ secrets.ACCESSHUB_TEST_USERNAME_SMALL }}
-          ACCESSHUB_TEST_PASSWORD_SMALL: ${{ secrets.ACCESSHUB_TEST_PASSWORD_SMALL }}
-          ACCESSHUB_TEST_USERNAME_LARGE: ${{ secrets.ACCESSHUB_TEST_USERNAME_LARGE }}
-          ACCESSHUB_TEST_PASSWORD_LARGE: ${{ secrets.ACCESSHUB_TEST_PASSWORD_LARGE }}
+          ACCESSHUB_TEST_USERNAME_SMALL: ${{ inputs.online_tests && secrets.ACCESSHUB_TEST_USERNAME_SMALL || '' }}
+          ACCESSHUB_TEST_PASSWORD_SMALL: ${{ inputs.online_tests && secrets.ACCESSHUB_TEST_PASSWORD_SMALL || '' }}
+          ACCESSHUB_TEST_USERNAME_LARGE: ${{ inputs.online_tests && secrets.ACCESSHUB_TEST_USERNAME_LARGE || '' }}
+          ACCESSHUB_TEST_PASSWORD_LARGE: ${{ inputs.online_tests && secrets.ACCESSHUB_TEST_PASSWORD_LARGE || '' }}
         run: python3 ios/scripts/sanitize-test-evidence.py ios/build
       - uses: actions/upload-artifact@v4
         if: ${{ always() && steps.sanitize.outcome == 'success' }}
