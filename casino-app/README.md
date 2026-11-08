@@ -24,6 +24,14 @@ The script archives to `build/AccessHubCasino.xcarchive` and exports to `build/e
 
 Alternatively use Product → Archive → Distribute App in Xcode and select the destination supported by your account. Xcode can generate the exact ExportOptions.plist for that destination.
 
+For an IPA that AccessHub Loader signs with the installing user's Apple account, run:
+
+```sh
+bash scripts/build-loader-ipa.sh
+```
+
+This builds the Release `iphoneos` target without a signing identity and packages `build/loader/output/AccessHubCasino.ipa`. The script checks the bundle identifier, arm64 device architecture, iOS platform, HTTPS backend configuration and ZIP integrity, then writes SHA-256 and build metadata alongside it. This unsigned artifact must be signed by the loader before iPhone installation. The loader workflow template is `scripts/github-loader-ipa.yml`; it expects this project's contents under `casino-app/` in its repository.
+
 ## Tests and verification
 
 `scripts/validate_sources.py` checks resources, plists, storyboard, scheme, asset files and, when optional Python parsers are installed, Swift syntax and Xcode object references. This is **not** a Swift type check, Xcode compilation or simulator test.
@@ -39,7 +47,9 @@ ACCESSHUB_RUN_ONLINE_TESTS=1 SMALL_IPHONE='iPhone SE (3rd generation)' LARGE_IPH
 
 Change those names to installed devices. Inspect retained screenshot attachments in each `.xcresult`. Run VoiceOver and large Dynamic Type checks and profile animation performance with Instruments on actual target devices. The target is 60 fps; it has not been measured in this Windows delivery environment.
 
-The repository includes `.github/workflows/ios.yml` (also copied to `scripts/github-ios.yml`). It expects this `ios` directory at the repository root. It compiles on macOS, selects a small and a large installed iPhone, and uploads logs, `.xcresult` bundles and screenshot attachments even on failure. Connected tests are off for pushes and pull requests. Enable the `online_tests` checkbox when manually running the workflow to exercise all four games on the configured backend. This workflow has been supplied, not remotely executed.
+Simulator tests use local ad hoc signing (`CODE_SIGNING_ALLOWED=YES CODE_SIGN_IDENTITY=-`) so the app receives the entitlements needed for Keychain access. This requires no Apple developer certificate. Keep the device IPA's separate unsigned build configuration for loader signing. A secure-session roundtrip test checks Keychain creation, read and update before connected UI acceptance.
+
+The repository includes `.github/workflows/ios.yml` (also copied to `scripts/github-ios.yml`). It expects this `ios` directory at the repository root. It compiles on macOS, selects a small and a large installed iPhone, and uploads logs, `.xcresult` bundles and screenshot attachments even on failure. Connected tests are off for pushes and pull requests. Enable the `online_tests` checkbox when manually running the workflow to exercise all four games on the configured backend. The loader variant, `scripts/github-loader-ipa.yml`, was executed in the public casino build repository as documented below.
 
 On this delivery's Windows workspace, the exact static validation command is:
 
@@ -61,4 +71,8 @@ The validator prepends `ios/.python-tools` to Python's module search path itself
 
 ## Delivery verification boundary
 
-The project, native screens, assets, backend connection and test sources are implemented. Static checks were run on Windows. Xcode compilation, signing, simulator screenshots, device layout checks and animation profiling require macOS and have not been represented as completed. Backend verification and deployment evidence are documented separately in the repository's root documentation.
+The native Release arm64 iPhone target compiled and was packaged into an unsigned IPA on macOS using Xcode 16.4 and the iOS 18.5 SDK. [Build run 42524613350](https://github.com/angussaw4134/AccessHubCasino-iOS-Build-20261109/actions/runs/42524613350) passed on commit `6245d200299200dffccdc9d0a3c778286ad17514`. Seven client contract tests and the welcome/account-form UI test passed on each of iPhone SE (3rd generation) and iPhone 16 Pro Max simulators. The two connected tests were intentionally skipped in that offline run. Both welcome screenshots were inspected: artwork, text and controls render correctly; the small layout scrolls to reach its legal footer. The machine-readable record is `../reports/ios-runs/42524613350/summary.json`.
+
+Apple account signing, physical iPhone installation and animation profiling on hardware have not been verified. The 60 fps target is not a measured result. Backend verification and deployment evidence are documented separately in the repository's root documentation.
+
+The first connected run, [42525330197](https://github.com/angussaw4134/AccessHubCasino-iOS-Build-20261109/actions/runs/42525330197), exposed a simulator build configuration failure before any guest API request or game round: Keychain session storage displayed “Your secure session could not be updated.” Both sizes reproduced it. The simulator scripts have been corrected to preserve local signing entitlements; no production app source or device IPA changed for this correction. Its report is `../reports/ios-runs/42525330197/summary.json`. A connected retest is required before claiming all four game UI flows passed.

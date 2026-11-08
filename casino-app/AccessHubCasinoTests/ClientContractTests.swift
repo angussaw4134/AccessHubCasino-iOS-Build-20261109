@@ -1,7 +1,20 @@
 import XCTest
+import Security
 @testable import AccessHubCasino
 
 final class ClientContractTests: XCTestCase {
+    func testSecureSessionCanBeCreatedReadAndUpdated() throws {
+        let account = "test-session-" + UUID().uuidString
+        defer {
+            SecItemDelete([kSecClass as String:kSecClassGenericPassword,
+                           kSecAttrService as String:"app.accesshub.casino.session",
+                           kSecAttrAccount as String:account] as CFDictionary)
+        }
+        try SessionVault.write("initial-session",account:account)
+        XCTAssertEqual(SessionVault.read(account),"initial-session")
+        try SessionVault.write("renewed-session",account:account)
+        XCTAssertEqual(SessionVault.read(account),"renewed-session")
+    }
     func testCreditPrecisionAndMaximumAccountingValue() throws {
         let fixture = Data(#"{"balanceUnits":1000000000000000,"availableRakebackUnits":10001,"games":{"blackjack":{"dealer":[{"rank":"A","suit":"spades"},null]}}}"#.utf8)
         let decoded = try JSONValue.parse(fixture)

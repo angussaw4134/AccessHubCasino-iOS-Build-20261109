@@ -131,6 +131,10 @@ final class AccessHubCasinoUITests: XCTestCase {
         let home = app.tabBars.buttons["Home"]
         waitUntil(timeout:30) { home.exists || (guest.exists && guest.isEnabled && guest.isHittable) }
         if !home.exists { guest.tap() }
+        waitUntil(timeout:30) { home.exists || app.alerts.firstMatch.exists }
+        if app.alerts.firstMatch.exists {
+            XCTFail("Guest access failed: " + app.alerts.firstMatch.staticTexts.allElementsBoundByIndex.map(\.label).joined(separator:" · "))
+        }
         XCTAssertTrue(home.waitForExistence(timeout:30))
     }
     private func waitUntil(timeout:TimeInterval,_ condition:@escaping () -> Bool) {

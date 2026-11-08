@@ -24,13 +24,13 @@ jobs:
       ONLINE_TESTS: ${{ inputs.online_tests && '1' || '0' }}
     steps:
       - uses: actions/checkout@v4
-      - name: Compile native app without signing
+      - name: Compile native simulator app with local signing
         run: |
           set -o pipefail
           mkdir -p ios/build
           xcodebuild -project ios/AccessHubCasino.xcodeproj -scheme AccessHubCasino \
             -destination 'generic/platform=iOS Simulator' -configuration Debug \
-            CODE_SIGNING_ALLOWED=NO build 2>&1 | tee ios/build/compile.log
+            CODE_SIGNING_ALLOWED=YES CODE_SIGN_IDENTITY=- build 2>&1 | tee ios/build/compile.log
       - name: Select small and large installed iPhones
         run: |
           xcrun simctl list devices available -j | python3 ios/scripts/select_simulators.py >> "$GITHUB_ENV"
@@ -42,7 +42,7 @@ jobs:
           xcodebuild -project ios/AccessHubCasino.xcodeproj -scheme AccessHubCasino \
             -destination "platform=iOS Simulator,id=$SMALL_ID" \
             -resultBundlePath ios/build/Small-iPhone.xcresult \
-            ACCESSHUB_RUN_ONLINE_TESTS="$ONLINE_TESTS" CODE_SIGNING_ALLOWED=NO \
+            ACCESSHUB_RUN_ONLINE_TESTS="$ONLINE_TESTS" CODE_SIGNING_ALLOWED=YES CODE_SIGN_IDENTITY=- \
             test 2>&1 | tee ios/build/small-iphone.log
       - name: Test larger iPhone
         if: ${{ always() && env.LARGE_ID != '' }}
@@ -52,7 +52,7 @@ jobs:
           xcodebuild -project ios/AccessHubCasino.xcodeproj -scheme AccessHubCasino \
             -destination "platform=iOS Simulator,id=$LARGE_ID" \
             -resultBundlePath ios/build/Large-iPhone.xcresult \
-            ACCESSHUB_RUN_ONLINE_TESTS="$ONLINE_TESTS" CODE_SIGNING_ALLOWED=NO \
+            ACCESSHUB_RUN_ONLINE_TESTS="$ONLINE_TESTS" CODE_SIGNING_ALLOWED=YES CODE_SIGN_IDENTITY=- \
             test 2>&1 | tee ios/build/large-iphone.log
       - name: Export screenshot and test attachments
         if: always()

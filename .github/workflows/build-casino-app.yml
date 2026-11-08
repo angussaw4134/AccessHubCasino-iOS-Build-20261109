@@ -40,11 +40,12 @@ jobs:
         id: small
         run: |
           set -o pipefail
+          # Local simulator signing preserves the app's Keychain entitlements.
           xcodebuild -project casino-app/AccessHubCasino.xcodeproj -scheme AccessHubCasino \
             -destination "platform=iOS Simulator,id=$SMALL_ID" \
             -derivedDataPath casino-app/build/simulator \
             -resultBundlePath casino-app/build/Small-iPhone.xcresult \
-            ACCESSHUB_RUN_ONLINE_TESTS="$ONLINE_TESTS" CODE_SIGNING_ALLOWED=NO \
+            ACCESSHUB_RUN_ONLINE_TESTS="$ONLINE_TESTS" CODE_SIGNING_ALLOWED=YES CODE_SIGN_IDENTITY=- \
             test 2>&1 | tee casino-app/build/small-iphone.log
       - name: Test larger iPhone
         if: ${{ always() && env.LARGE_ID != '' && steps.device.outcome == 'success' }}
@@ -54,7 +55,7 @@ jobs:
             -destination "platform=iOS Simulator,id=$LARGE_ID" \
             -derivedDataPath casino-app/build/simulator \
             -resultBundlePath casino-app/build/Large-iPhone.xcresult \
-            ACCESSHUB_RUN_ONLINE_TESTS="$ONLINE_TESTS" CODE_SIGNING_ALLOWED=NO \
+            ACCESSHUB_RUN_ONLINE_TESTS="$ONLINE_TESTS" CODE_SIGNING_ALLOWED=YES CODE_SIGN_IDENTITY=- \
             test 2>&1 | tee casino-app/build/large-iphone.log
       - name: Extract test screenshots
         if: always()
