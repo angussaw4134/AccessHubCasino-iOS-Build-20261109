@@ -5,7 +5,7 @@ import UserNotifications
 struct CommunityView: View {
     var body: some View {
         HubPage(title:"A good place to meet.",subtitle:"Real conversations. Shared games. A community you shape.") {
-            HubLinkCard(title:"Global lounge",detail:"Join the conversation",symbol:"bubble.left.and.bubble.right") { ChatRoomView(channel:"global") }
+            HubLinkCard(title:"Global lounge",detail:"Join the conversation",symbol:"bubble.left.and.bubble.right") { ChatRoomView(channel:"global") }.accessibilityIdentifier("globalChatShortcut")
             HubLinkCard(title:"Announcements",detail:"Updates from the AccessHub team",symbol:"megaphone") { ChatRoomView(channel:"announcements") }
             HubLinkCard(title:"Snake club",detail:"Find opponents and talk tactics",symbol:"gamecontroller") { ChatRoomView(channel:"snake") }
             HubLinkCard(title:"Friends & invitations",detail:"Your people, one tap away",symbol:"person.2") { FriendsView() }
@@ -22,9 +22,9 @@ struct HubLearningButton: View {
     @EnvironmentObject var hub: HubStore
     let milestone: String
     let title: String
-    @State private var completed = false
+    private var completed: Bool { hub.learning["completed"].array.contains { $0.id == milestone } }
     var body: some View {
-        Button(completed ? "Learning saved" : title) { Task { completed = await hub.action("learning.complete",["milestone":.string(milestone)]) } }.font(.caption.bold()).foregroundStyle(AH.emerald).disabled(!hub.canAct || completed)
+        Button(completed ? "Learning completed" : title) { Task { await hub.action("learning.complete",["milestone":.string(milestone)]) } }.font(.caption.bold()).foregroundStyle(AH.emerald).disabled(!hub.canAct || completed)
     }
 }
 
@@ -157,7 +157,7 @@ struct SupportTicketView: View {
         }.padding(20) }.pageBackground().navigationTitle("Support").navigationBarTitleDisplayMode(.inline).privacySensitive()
         .task { await load() }.refreshable { await load() }
         .onChange(of:photo) { _,newPhoto in guard let newPhoto else { return }; uploadID = UUID().uuidString; Task { await upload(newPhoto) } }
-        .sheet(isPresented:$showingImage) { NavigationStack { Group { if let attachmentImage { Image(uiImage:attachmentImage).resizable().scaledToFit() } }.pageBackground().toolbar { ToolbarItem(placement:.cancellationAction) { Button("Close") { showingImage = false; attachmentImage = nil } } } }
+        .sheet(isPresented:$showingImage) { NavigationStack { Group { if let attachmentImage { Image(uiImage:attachmentImage).resizable().scaledToFit() } }.pageBackground().toolbar { ToolbarItem(placement:.cancellationAction) { Button("Close") { showingImage = false; attachmentImage = nil } } } } }
         .onChange(of:hub.ownerID) { _,_ in ticket = .null; attachmentImage = nil; showingImage = false; message = "" }
     }
     private func load() async {
@@ -243,12 +243,13 @@ struct NotificationPreferencesView: View {
 
 struct HubProgressView: View {
     @EnvironmentObject var hub: HubStore
+    @EnvironmentObject var store: CasinoStore
     var body: some View {
         HubPage(title:"More ways to make it yours.",subtitle:"Hub cosmetic progression is earned through community learning. Casino progress stays separate.") {
             Panel { VStack(alignment:.leading,spacing:16) {
                 Text("HUB LEVEL \(max(1,hub.profile["level"].int))").font(.caption.bold()).tracking(1.5).foregroundStyle(AH.emerald)
                 Text("\(hub.profile["hubXP"].int) cosmetic XP").font(.title2.bold())
-                ProgressView(value:Double(hub.profile["hubXP"].int % 100),total:100).tint(AH.emerald)
+                ProgressView(value:Double(hub.profile["hubXP"].int % 100),total:100).tint(AH.emerald).animation(store.reducedMotion ? nil : .easeOut(duration:0.5),value:hub.profile["hubXP"].int)
                 Text("Cosmetic boosts do not change game speed, collisions, payouts or reward eligibility.").font(.caption).foregroundStyle(AH.muted)
             } }
             Panel { VStack(alignment:.leading,spacing:16) {
@@ -258,8 +259,11 @@ struct HubProgressView: View {
                 HubLearningButton(milestone:"marketplace-basics",title:"Complete marketplace introduction")
             } }
             HubLinkCard(title:"Your inventory",detail:"Equip your collection",symbol:"square.stack.3d.up") { InventoryView() }
+            SectionTitle(title:"Your learning badges")
+            ForEach(hub.learning["milestones"].array.filter { $0["completed"].bool }) { milestone in Panel { Label(milestone["name"].string,systemImage:"seal.fill").foregroundStyle(AH.gold) } }
+            ForEach(Array(hub.learning["unlocks"].array.enumerated()),id:\.offset) { _,unlock in Panel { HStack { Image(systemName:unlock["unlocked"].bool ? "checkmark.seal.fill" : "lock").foregroundStyle(AH.emerald); VStack(alignment:.leading,spacing:5) { Text(unlock["name"].string).font(.headline); Text("Level \(unlock["level"].int) · account-bound cosmetic").font(.caption).foregroundStyle(AH.muted) } } } }
             HubLinkCard(title:"Casino progress & rakeback",detail:"Your existing milestones and credit rewards",symbol:"chart.bar.xaxis") { ProgressScreen() }
-        }
+        }.task { await hub.loadLearning() }
     }
 }
 

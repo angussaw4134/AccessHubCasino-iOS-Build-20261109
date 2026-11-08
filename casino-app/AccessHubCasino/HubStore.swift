@@ -45,10 +45,14 @@ enum HubDestination: Hashable, Identifiable {
     @Published var pending: HubCommand?
     @Published var destination: HubDestination?
     @Published var lastResult: JSONValue = .null
+    @Published var learning: JSONValue = .null
+    @Published var hubLevelUp: Int?
     @Published private(set) var ownerID = ""
     private weak var casino: CasinoStore?
     private var refreshTask: Task<Void,Never>?
     private var generation = 0
+    private var bootstrapVersion = 0
+    private var collectionQueries: [String:(String,String)] = [:]
     var points: Int { bootstrap["pointsBalance"].int }
     var profile: JSONValue { bootstrap["profile"] }
     func equipped(_ kind: String) -> JSONValue { bootstrap["equippedItems"][kind] }
@@ -65,7 +69,7 @@ enum HubDestination: Hashable, Identifiable {
         casino = store
         if nextOwner != ownerID {
             ownerID = nextOwner; bootstrap = .null; collections = [:]; loading = []; errors = [:]
-            error = nil; notice = nil; destination = nil; lastResult = .null; pending = nil
+            error = nil; notice = nil; destination = nil; lastResult = .null; pending = nil; learning = .null; hubLevelUp = nil
         }
         guard !ownerID.isEmpty else { store.hubHasPending = false; return }
         if let data = UserDefaults.standard.data(forKey:Self.storageKey(owner:ownerID)) {
@@ -73,6 +77,7 @@ enum HubDestination: Hashable, Identifiable {
         }
         store.hubHasPending = pending != nil
         await refresh()
+        await loadLearning()
         if pending != nil { await retry() }
         refreshTask = Task { [weak self] in
             while !Task.isCancelled {
@@ -91,21 +96,27 @@ enum HubDestination: Hashable, Identifiable {
         guard stamp == generation else { throw CancellationError() }
         return result
     }
-    func refresh() async {
-        guard !ownerID.isEmpty, !loading.contains("bootstrap") else { return }
+    func refresh(force: Bool = false) async {
+        guard !ownerID.isEmpty, force || !loading.contains("bootstrap") else { return }
         let stamp = generation
+        bootstrapVersion += 1
+        let version = bootstrapVersion
         loading.insert("bootstrap")
-        defer { if stamp == generation { loading.remove("bootstrap") } }
+        defer { if stamp == generation && version == bootstrapVersion { loading.remove("bootstrap") } }
         do {
             let result = try await fetch("/v2/bootstrap")
+            guard version == bootstrapVersion else { return }
             guard result["schemaVersion"].int == 2, result["profile"]["id"].string == ownerID else { throw CasinoError.invalidResponse }
+            let priorLevel = profile["level"].int
             bootstrap = result; errors.removeValue(forKey:"bootstrap")
-        } catch is CancellationError {} catch { if stamp == generation { errors["bootstrap"] = error.localizedDescription } }
+            if priorLevel > 0 && result["profile"]["level"].int > priorLevel { hubLevelUp = result["profile"]["level"].int }
+        } catch is CancellationError {} catch { if stamp == generation && version == bootstrapVersion { errors["bootstrap"] = error.localizedDescription } }
     }
     func items(_ key: String) -> [JSONValue] { (collections[key] ?? .null)["items"].array }
     func collection(_ key: String, query: String = "", filter: String = "", more: Bool = false) async {
         guard !loading.contains(key), !ownerID.isEmpty else { return }
         let stamp = generation
+        if !more { collectionQueries[key] = (query,filter) }
         loading.insert(key); defer { if stamp == generation { loading.remove(key) } }
         do {
             var path = "/v2/" + key + "?limit=40"
@@ -123,9 +134,13 @@ enum HubDestination: Hashable, Identifiable {
             errors.removeValue(forKey:key)
         } catch is CancellationError {} catch { if stamp == generation { errors[key] = error.localizedDescription } }
     }
+    func loadMore(_ key: String) async { let criteria = collectionQueries[key] ?? ("",""); await collection(key,query:criteria.0,filter:criteria.1,more:true) }
     func daily() async {
         do { collections["daily"] = try await fetch("/v2/daily"); errors.removeValue(forKey:"daily") }
         catch is CancellationError {} catch { errors["daily"] = error.localizedDescription }
+    }
+    func loadLearning() async {
+        do { learning = try await fetch("/v2/learning") } catch is CancellationError {} catch { errors["learning"] = error.localizedDescription }
     }
     @discardableResult func action(_ type: String, _ payload: [String:JSONValue] = [:]) async -> Bool {
         guard canAct else { return false }
@@ -149,7 +164,8 @@ enum HubDestination: Hashable, Identifiable {
             clearPending()
             notice = response["receipt"]["message"].string.isEmpty ? "Saved" : response["receipt"]["message"].string
             casino.feedback(pending.type)
-            await refresh()
+            await refresh(force:true)
+            if pending.type == "learning.complete" { await loadLearning() }
             return true
         } catch is CancellationError { return false }
         catch let failure as CasinoStore.HTTPFailure {

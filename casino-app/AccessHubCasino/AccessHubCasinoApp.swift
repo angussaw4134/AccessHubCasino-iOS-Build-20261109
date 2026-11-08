@@ -120,6 +120,9 @@ struct MainTabs: View {
             }
             .sheet(isPresented:$signIn) { AccountView(register:false) }
             .sheet(item:$hub.destination) { destination in HubDestinationSheet(destination:destination) }
+            .overlay(alignment:.top) {
+                if let level = hub.hubLevelUp { HStack(spacing:12) { Image(systemName:"sparkles").foregroundStyle(AH.gold); VStack(alignment:.leading,spacing:4) { Text("Hub level \(level)").font(.headline); Text("A little more you. Explore your collection.").font(.caption).foregroundStyle(AH.muted) }; Spacer(); Button("Done") { hub.hubLevelUp = nil }.font(.caption.bold()) }.padding(18).background(AH.raised,in:RoundedRectangle(cornerRadius:18)).padding(14).transition(.opacity).animation(store.reducedMotion ? nil : .easeOut(duration:0.25),value:hub.hubLevelUp) }
+            }
             .alert("AccessHub",isPresented:Binding(get:{ hub.error != nil },set:{ if !$0 { hub.error = nil } })) { Button("OK",role:.cancel) { hub.error = nil } } message: { Text(hub.error ?? "") }
             .safeAreaInset(edge:.bottom,spacing:0) {
                 if hub.pending != nil { HStack { Text("Confirming your saved Hub request").font(.caption); Spacer(); Button("Retry") { Task { await hub.retry() } }.font(.caption.bold()).disabled(hub.busy) }.padding(12).background(AH.raised).foregroundStyle(AH.gold) }

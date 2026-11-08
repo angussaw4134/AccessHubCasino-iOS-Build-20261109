@@ -30,7 +30,7 @@ struct SnakeLobbyView: View {
                     TextField("Optional Access Hub Credit stake",text:$stake).keyboardType(.numberPad).fieldStyle()
                     Text("Default: 0, a friendly match. Both players must accept the same stake. Stakes are reserved only after acceptance; the winner receives the pot, draws and cancellations return stakes.").font(.caption).foregroundStyle(AH.muted)
                 }
-                Button("Create \(mode == "solo" ? "solo session" : "room")") { Task { await create() } }.buttonStyle(PrimaryButton()).disabled(busy || !hub.isAvailable || !validStake)
+                Button("Create \(mode == "solo" ? "solo session" : "room")") { Task { await create() } }.buttonStyle(PrimaryButton()).disabled(busy || !hub.isAvailable || !validStake || !hub.featureEnabled("snake")).accessibilityIdentifier("snakeCreate")
                 if UserDefaults.standard.data(forKey:createKey) != nil { Button("Check saved room request") { Task { await create() } }.font(.caption).disabled(busy) }
             } }
             Panel { VStack(alignment:.leading,spacing:14) {
@@ -109,7 +109,7 @@ struct SnakeRoomView: View {
             }
             if ["finished","cancelled"].contains(room["phase"].string) {
                 Panel { VStack(alignment:.leading,spacing:12) {
-                    Text(resultTitle).font(.title2.bold()).foregroundStyle(AH.emerald)
+                    Text(resultTitle).font(.title2.bold()).foregroundStyle(AH.emerald).accessibilityIdentifier("snakeResult")
                     Text(room["result"]["reason"].string.replacingOccurrences(of:"_",with:" ").capitalized).font(.subheadline).foregroundStyle(AH.muted)
                     Text(room["settlementStatus"].string == "pending" ? "Credit settlement pending · the server is retrying" : room["stakeUnits"].double == 0 ? "Friendly session complete" : "Credit settlement confirmed").font(.caption).foregroundStyle(room["settlementStatus"].string == "pending" ? AH.gold : AH.emerald)
                     NavigationLink { SnakeLobbyView() } label: { Text("Play again") }.buttonStyle(PrimaryButton())

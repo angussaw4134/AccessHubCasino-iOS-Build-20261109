@@ -129,7 +129,7 @@ struct HubHomeView: View {
             SectionTitle(title:"Make your next move")
             NavigationLink { SnakeLobbyView() } label: {
                 ZStack(alignment:.bottomLeading) { HubFeatureArt(name:"SnakeArt").frame(height:180); LinearGradient(colors:[.clear,AH.background.opacity(0.9)],startPoint:.top,endPoint:.bottom); VStack(alignment:.leading,spacing:6) { Text("SNAKE").font(.title2.bold()); Text("Solo rhythm. Live rivalries.").font(.subheadline).foregroundStyle(AH.muted) }.padding(20) }.clipShape(RoundedRectangle(cornerRadius:22))
-            }.buttonStyle(.plain)
+            }.buttonStyle(.plain).accessibilityIdentifier("homeSnakeShortcut")
             NavigationLink { CasinoCollectionView() } label: { FeaturedGame(game:.blackjack) }.buttonStyle(.plain)
             if let giveaway = hub.bootstrap["giveaways"].array.first {
                 HubLinkCard(title:giveaway["title"].string,detail:"Free entry · closes \(readableDate(giveaway["closesAt"]))",symbol:"gift") { GiveawaysView() }
@@ -148,7 +148,7 @@ struct HubPlayView: View {
         HubPage(title:"Choose your next move.",subtitle:"A quiet practice session or a live challenge with a friend.") {
             NavigationLink { SnakeLobbyView() } label: {
                 VStack(alignment:.leading,spacing:0) { HubFeatureArt(name:"SnakeArt").frame(height:210); VStack(alignment:.leading,spacing:8) { Text("Snake").font(.title2.bold()); Text("Smooth movement. Shared countdowns. Solo and live one-versus-one rooms.").font(.subheadline).foregroundStyle(AH.muted) }.padding(20) }.background(AH.panel,in:RoundedRectangle(cornerRadius:24)).clipShape(RoundedRectangle(cornerRadius:24))
-            }.buttonStyle(.plain)
+            }.buttonStyle(.plain).accessibilityIdentifier("snakeLobbyShortcut")
             HubLinkCard(title:"Private rooms & match history",detail:"Join a friend's room or revisit a finished match.",symbol:"person.2") { SnakeLobbyView() }
             SectionTitle(title:"AccessHub Casino",caption:"Four original games · Access Hub Credits")
             LazyVGrid(columns:[GridItem(.flexible()),GridItem(.flexible())],spacing:12) {
@@ -170,7 +170,7 @@ struct RewardsView: View {
         HubPage(title:"Good things, collected.",subtitle:"Free community rewards, separate from casino credits and game results.") {
             HubStatus()
             Panel { HStack { VStack(alignment:.leading,spacing:8) { Text("HUB POINTS").font(.caption.bold()).tracking(1.5).foregroundStyle(AH.muted); Text(hub.isAvailable ? "\(hub.points)" : "—").font(.system(size:40,weight:.semibold,design:.rounded)); Text("Earned from free rewards and community learning.").font(.caption).foregroundStyle(AH.muted) }; Spacer(); GemArt().frame(width:48,height:60) } }
-            HubLinkCard(title:"Daily reward",detail:hub.bootstrap["daily"]["claimed"].bool ? "Claimed today · preview the schedule" : "See today's available reward",symbol:"sun.max") { DailyRewardView() }
+            HubLinkCard(title:"Daily reward",detail:hub.bootstrap["daily"]["claimed"].bool ? "Claimed today · preview the schedule" : "See today's available reward",symbol:"sun.max") { DailyRewardView() }.accessibilityIdentifier("dailyRewardShortcut")
             HubLinkCard(title:"Weekly giveaways",detail:"Free entries and actual configured prizes",symbol:"gift") { GiveawaysView() }
             HubLinkCard(title:"Voucher wallet",detail:"Free drops and your available benefits",symbol:"ticket") { VoucherWalletView() }
             HubLinkCard(title:"Your inventory",detail:"Collect, equip and trade eligible cosmetics",symbol:"square.stack.3d.up") { InventoryView() }
@@ -238,7 +238,7 @@ struct HubLoadMore: View {
     let key: String
     var body: some View {
         if !(hub.collections[key]?["nextCursor"].string ?? "").isEmpty {
-            Button("Load more") { Task { await hub.collection(key,more:true) } }.buttonStyle(PrimaryButton(secondary:true)).disabled(hub.loading.contains(key))
+            Button("Load more") { Task { await hub.loadMore(key) } }.buttonStyle(PrimaryButton(secondary:true)).disabled(hub.loading.contains(key))
         }
     }
 }
@@ -438,6 +438,7 @@ struct MarketplaceView: View {
                 Button("Confirm purchase") { Task { if await hub.action("market.buy",["listingId":.string(listing.id),"expectedPrice":listing["price"]]) { buying = nil; await hub.collection("marketplace",query:query,filter:filter) } } }.buttonStyle(PrimaryButton()).disabled(!hub.canAct)
                 Spacer()
             }.padding(22).pageBackground().navigationTitle("Review purchase").toolbar { ToolbarItem(placement:.cancellationAction) { Button("Cancel") { buying = nil } } } }
+        }
     }
 }
 

@@ -148,6 +148,27 @@ final class AccessHubCasinoUITests: XCTestCase {
         XCTAssertTrue(app.frame.contains(app.buttons["Open profile"].frame))
         XCTAssertFalse(app.buttons["Free credits"].exists)
         attach(app,"Zero-state Home layout")
+        if environment["ACCESSHUB_RUN_HUB_TESTS"] == "1" {
+            app.tabBars.buttons["Rewards"].tap()
+            scrollTo("dailyRewardShortcut",app:app).tap()
+            let claim = scrollTo("claimDaily",app:app)
+            waitEnabled(claim,timeout:20); claim.tap()
+            waitUntil(timeout:20) { !claim.isEnabled && claim.label.contains("Claimed") }
+            attach(app,"Hub daily reward claimed once")
+            app.tabBars.buttons["Community"].tap()
+            scrollTo("globalChatShortcut",app:app).tap()
+            XCTAssertTrue(app.textFields["Message the room"].waitForExistence(timeout:20))
+            attach(app,"Hub real community chat")
+            openPlayRoot(app)
+            for _ in 0..<5 { app.swipeDown() }
+            scrollTo("snakeLobbyShortcut",app:app).tap()
+            app.segmentedControls.buttons["Solo practice"].tap()
+            scrollTo("snakeCreate",app:app).tap()
+            let ready = scrollTo("Accept terms & ready",app:app)
+            waitEnabled(ready,timeout:20); ready.tap()
+            XCTAssertTrue(app.staticTexts["snakeResult"].waitForExistence(timeout:30))
+            attach(app,"Hub authoritative solo Snake completed")
+        }
         for (name,control) in [("Blackjack","blackjackDeal"),("Mines","minesStart"),("Slots","slotsSpin"),("Crash","crashEnter")] {
             openGame(name,app:app)
             let action = scrollTo(control,app:app)
