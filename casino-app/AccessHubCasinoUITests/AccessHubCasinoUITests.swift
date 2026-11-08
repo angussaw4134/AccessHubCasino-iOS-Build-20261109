@@ -36,7 +36,7 @@ final class AccessHubCasinoUITests: XCTestCase {
         XCTAssertTrue(app.frame.contains(brand.frame),"Home branding must fit within the small iPhone viewport.")
         XCTAssertTrue(app.frame.contains(app.buttons["Open profile"].frame),"Profile shortcut must not be clipped.")
         attach(app,"Home funded account")
-        for tab in ["Games","Credits","Progress","Profile","Home"] { app.tabBars.buttons[tab].tap(); XCTAssertTrue(app.tabBars.buttons[tab].isSelected) }
+        for tab in ["Play","Rewards","Community","Profile","Home"] { app.tabBars.buttons[tab].tap(); XCTAssertTrue(app.tabBars.buttons[tab].isSelected) }
 
         openGame("Blackjack",app:app)
         let oldBlackjack = resultID(app,"blackjack")
@@ -71,10 +71,10 @@ final class AccessHubCasinoUITests: XCTestCase {
         for _ in 0..<5 where !app.staticTexts["EMERALD VAULT"].isHittable { app.swipeDown() }
         attach(app,"Slots actual outcome")
 
-        waitUntil(timeout:5) { app.tabBars.buttons["Credits"].isHittable }
-        app.tabBars.buttons["Credits"].tap()
+        openCredits(app)
         XCTAssertFalse(app.buttons["freeRefill"].exists)
-        app.tabBars.buttons["Progress"].tap()
+        openPlayRoot(app)
+        scrollTo("openCasinoProgress",app:app).tap()
         app.buttons["rakebackShortcut"].tap()
         let claim = app.buttons["claimRakeback"]
         XCTAssertTrue(claim.waitForExistence(timeout:10)); waitEnabled(claim,timeout:20); claim.tap()
@@ -109,7 +109,7 @@ final class AccessHubCasinoUITests: XCTestCase {
         XCTAssertTrue(guest.waitForExistence(timeout:15),"Use a fresh simulator; an existing account must not be changed by this test.")
         waitEnabled(guest,timeout:20); guest.tap()
         XCTAssertTrue(app.tabBars.buttons["Home"].waitForExistence(timeout:30))
-        app.tabBars.buttons["Credits"].tap()
+        openCredits(app)
         let balance = app.descendants(matching:.any).matching(identifier:"creditsBalance").firstMatch
         XCTAssertTrue(balance.waitForExistence(timeout:10))
         XCTAssertEqual(balance.value as? String,"0")
@@ -119,6 +119,7 @@ final class AccessHubCasinoUITests: XCTestCase {
 
         app.tabBars.buttons["Profile"].tap()
         let accountID = app.staticTexts["profileAccountID"]
+        for _ in 0..<5 where !accountID.isHittable { app.swipeUp() }
         XCTAssertTrue(accountID.waitForExistence(timeout:10))
         let generatedID = accountID.label
         XCTAssertFalse(generatedID.isEmpty)
@@ -138,7 +139,7 @@ final class AccessHubCasinoUITests: XCTestCase {
         scrollTo("copyAccountID",app:app).tap()
         XCTAssertEqual(app.buttons["copyAccountID"].label,"Copied")
         attach(app,"Zero-state profile account ID")
-        for tab in ["Games","Credits","Progress","Profile","Home"] {
+        for tab in ["Play","Rewards","Community","Profile","Home"] {
             app.tabBars.buttons[tab].tap()
             XCTAssertTrue(app.tabBars.buttons[tab].isSelected)
         }
@@ -161,19 +162,23 @@ final class AccessHubCasinoUITests: XCTestCase {
         launchedApplication = true
         return app
     }
-    private func openGame(_ name:String,app:XCUIApplication) {
-        waitUntil(timeout:8) { app.tabBars.buttons["Games"].isHittable }
-        app.tabBars.buttons["Games"].tap()
-        // Return to the Games list if its navigation stack already contains a game.
-        for _ in 0..<4 where !app.navigationBars["Games"].exists {
+    private func openPlayRoot(_ app:XCUIApplication) {
+        app.tabBars.buttons["Play"].tap()
+        for _ in 0..<5 {
             let back = app.navigationBars.buttons.element(boundBy:0)
-            if back.exists && back.isHittable { back.tap() }
+            if back.exists && back.isHittable { back.tap() } else { break }
         }
+    }
+    private func openCredits(_ app:XCUIApplication) {
+        openPlayRoot(app)
+        scrollTo("openCasinoCredits",app:app).tap()
+    }
+    private func openGame(_ name:String,app:XCUIApplication) {
+        waitUntil(timeout:8) { app.tabBars.buttons["Play"].isHittable }
+        openPlayRoot(app)
         let button = app.buttons["Play " + name]
-        // Start at the top; otherwise a previously opened Slots card could leave
-        // earlier games above the viewport on a small iPhone.
-        for _ in 0..<4 where !app.staticTexts["The collection"].isHittable { app.swipeDown() }
-        for _ in 0..<8 where !button.isHittable { app.swipeUp() }
+        for _ in 0..<5 { app.swipeDown() }
+        for _ in 0..<9 where !button.isHittable { app.swipeUp() }
         XCTAssertTrue(button.isHittable); button.tap()
     }
     @discardableResult private func scrollTo(_ identifier:String,app:XCUIApplication) -> XCUIElement {
@@ -206,7 +211,7 @@ final class AccessHubCasinoUITests: XCTestCase {
         }
         XCTAssertTrue(home.waitForExistence(timeout:30))
         if createdGuest {
-            app.tabBars.buttons["Credits"].tap()
+            openCredits(app)
             let balance = app.descendants(matching:.any).matching(identifier:"creditsBalance").firstMatch
             XCTAssertTrue(balance.waitForExistence(timeout:10))
             XCTAssertEqual(balance.value as? String,"0","A new account starts with zero credits.")

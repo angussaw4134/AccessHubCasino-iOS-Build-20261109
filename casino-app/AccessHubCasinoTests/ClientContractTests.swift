@@ -3,6 +3,24 @@ import Security
 @testable import AccessHubCasino
 
 final class ClientContractTests: XCTestCase {
+    func testHubCommandsRetainOwnerAndExactPayloadForRetry() throws {
+        let command = HubCommand(id:"stable-market-request",ownerID:"original-casino-account",type:"market.buy",payload:["listingId":.string("listing-123"),"expectedPrice":.number(20)])
+        let restored = try JSONDecoder().decode(HubCommand.self,from:JSONEncoder().encode(command))
+        XCTAssertEqual(restored,command)
+        XCTAssertEqual(restored.body["payload"]?["expectedPrice"].int,20)
+        let accepted = try JSONValue.parse(Data(#"{"receipt":{"id":"stable-market-request","type":"market.buy","status":"accepted"},"result":{}}"#.utf8))
+        XCTAssertTrue(restored.accepts(accepted))
+        XCTAssertFalse(HubCommand(id:"different",ownerID:command.ownerID,type:command.type,payload:command.payload).accepts(accepted))
+        XCTAssertFalse(HubCommand(id:command.id,ownerID:command.ownerID,type:"market.cancel",payload:command.payload).accepts(accepted))
+        XCTAssertFalse(restored.accepts(.object(["receipt":.object(["id":.string(command.id),"type":.string(command.type),"status":.string("queued")])])))
+    }
+    func testHubNotificationRoutesRemainInsideAuthorizedScreens() {
+        XCTAssertEqual(HubDestination.notification(.object(["screen":.string("support"),"id":.string("private-ticket")])),.ticket("private-ticket"))
+        XCTAssertEqual(HubDestination.notification(.object(["screen":.string("vouchers"),"id":.string("voucher-1")])),.voucher("voucher-1"))
+        XCTAssertEqual(HubDestination.notification(.object(["screen":.string("snake"),"id":.string("room-1")])),.snake("room-1"))
+        XCTAssertNil(HubDestination.notification(.object(["screen":.string("snake")])))
+        XCTAssertNil(HubDestination.notification(.object(["screen":.string("https://untrusted.example"),"id":.string("anything")])))
+    }
     func testCrashPotentialReturnUsesOnlyCurrentRunningServerPosition() throws {
         var round: JSONValue = .object(["id":.string("current"),"phase":.string("running"),"multiplier":.number(1.5),"position":.object(["roundId":.string("current"),"status":.string("running"),"stakeUnits":.number(3)])])
         XCTAssertEqual(CrashPotentialReturn.units(round:round,displayMultiplier:1.5,online:true),4,"Fractional microcredits must be floored, not rounded.")

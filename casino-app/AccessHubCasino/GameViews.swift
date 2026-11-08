@@ -204,10 +204,11 @@ struct CrashGraph: View {
 
 struct BlackjackView: View {
     @EnvironmentObject var store: CasinoStore
+    @EnvironmentObject var hub: HubStore
     @State private var stake = "100"
     private var round: JSONValue { store.state["games"]["blackjack"] }
     private var active: Bool { round["status"].string == "active" }
-    private var back: String { store.state["settings"]["cardBack"].string }
+    private var back: String { hub.equipped("cardBack").exists ? "hub|" + hub.equipped("cardBack")["color"].string + "|" + hub.equipped("cardBack")["art"].string : store.state["settings"]["cardBack"].string }
     var body: some View {
         VStack(spacing:18) {
             VStack(spacing:22) {
@@ -249,6 +250,7 @@ struct BlackjackView: View {
         }
     }
     private var tableColor: Color {
+        if hub.equipped("tableTheme").exists { return Color.hubHex(hub.equipped("tableTheme")["color"].string).opacity(0.65) }
         switch store.state["settings"]["theme"].string { case "midnight": return Color(red:0.05,green:0.10,blue:0.22); case "aurora": return Color(red:0.14,green:0.08,blue:0.22); default:return Color(red:0.02,green:0.16,blue:0.13) }
     }
 }

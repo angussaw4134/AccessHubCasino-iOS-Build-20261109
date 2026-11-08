@@ -15,6 +15,9 @@ import UIKit
     @Published var selectedTab = 0
     @Published var rules: JSONValue = .null
     @Published var needsSignIn = false
+    @Published private(set) var sessionRevision = 0
+    var hubHasPending = false
+    var beforeSessionEnd: (() async throws -> Void)?
     private var token = SessionVault.read()
     private var lastKnownUsername = SessionVault.read("username") ?? ""
     private var polling: Task<Void, Never>?
@@ -69,6 +72,7 @@ import UIKit
     }
     func account(username: String, password: String, register: Bool) async -> Bool {
         guard !busy else { return false }
+        if hubHasPending && !register { error = "Resolve your saved Hub request before changing accounts."; return false }
         let expectedUsername = pending?.ownerUsername ?? state["user"]["username"].string
         if pending != nil && (register || username.lowercased() != expectedUsername.lowercased()) {
             error = "Sign back in to the same account to resolve your saved request before changing accounts."
@@ -90,9 +94,11 @@ import UIKit
     }
     func endSession(delete: Bool = false) async {
         guard canAct else { return }
+        guard !hubHasPending else { error = "Resolve your saved Hub request before signing out."; return }
         busy = true; defer { busy = false }
         mutationGeneration += 1
         do {
+            try await beforeSessionEnd?()
             _ = try await request(delete ? "/v1/account/delete" : "/v1/account/logout", body: [:])
             if delete {
                 let ownerPrefix = state["user"]["id"].string + ":"
@@ -103,6 +109,7 @@ import UIKit
             try SessionVault.write(UUID().uuidString, account: "guest-id")
             try SessionVault.write("",account:"username"); lastKnownUsername = ""
             online = false; error = nil; notice = nil; selectedTab = 0
+            sessionRevision += 1
         } catch { self.error = error.localizedDescription }
     }
     func action(_ type: String, _ fields: [String: JSONValue] = [:]) async {
@@ -212,6 +219,7 @@ import UIKit
             throw CasinoError.message("This is a different account from your saved request. Restore the original account to confirm its result.")
         }
         try SessionVault.write(nextToken); token = nextToken
+        sessionRevision += 1
         lastKnownUsername = response["state"]["user"]["username"].string
         try? SessionVault.write(lastKnownUsername,account:"username")
         needsSignIn = false
@@ -232,7 +240,43 @@ import UIKit
         withAnimation(reducedMotion ? nil : .easeOut(duration: 0.3)) { state = next; online = true }
         if oldLevel > 0 && newLevel > oldLevel { levelUp = newLevel }
     }
-    private struct HTTPFailure: Error { let status: Int; let code: String; let message: String; let state: JSONValue }
+    struct HTTPFailure: LocalizedError { let status: Int; let code: String; let message: String; let state: JSONValue; var errorDescription: String? { message } }
+
+    /// All Hub features use the existing session. A late response from a previous
+    /// account is rejected before private data can reach a view or cache.
+    func hubRequest(_ path: String, body: [String: JSONValue]? = nil) async throws -> JSONValue {
+        guard authenticated, !needsSignIn else { throw CasinoError.message("Sign in to continue.") }
+        return try await request(path, body:body)
+    }
+    func socketRequest(_ path: String) throws -> URLRequest {
+        guard authenticated, !needsSignIn, let token,
+              let endpoint = URL(string:path, relativeTo:baseURL)?.absoluteURL,
+              var parts = URLComponents(url:endpoint,resolvingAgainstBaseURL:true) else { throw CasinoError.invalidEndpoint }
+        parts.scheme = "wss"
+        guard let url = parts.url else { throw CasinoError.invalidEndpoint }
+        var request = URLRequest(url:url)
+        request.setValue("Bearer \(token)",forHTTPHeaderField:"Authorization")
+        return request
+    }
+    func privateData(_ path: String, upload: Data? = nil, contentType: String = "application/octet-stream", filename: String = "Screenshot") async throws -> (Data, HTTPURLResponse) {
+        guard authenticated, !needsSignIn, let token,
+              let endpoint = URL(string:path,relativeTo:baseURL)?.absoluteURL else { throw CasinoError.invalidEndpoint }
+        let originalToken = token
+        var request = URLRequest(url:endpoint)
+        request.cachePolicy = .reloadIgnoringLocalCacheData
+        request.timeoutInterval = 30
+        request.setValue("Bearer \(token)",forHTTPHeaderField:"Authorization")
+        if let upload { request.httpMethod = "PUT"; request.httpBody = upload; request.setValue(contentType,forHTTPHeaderField:"Content-Type"); request.setValue(filename,forHTTPHeaderField:"X-Filename") }
+        let (data,response) = try await URLSession.shared.data(for:request)
+        try Task.checkCancellation()
+        guard originalToken == self.token else { throw CancellationError() }
+        guard let http = response as? HTTPURLResponse else { throw CasinoError.invalidResponse }
+        guard (200..<300).contains(http.statusCode) else {
+            let json = (try? JSONValue.parse(data)) ?? .null
+            throw HTTPFailure(status:http.statusCode,code:json["error"]["code"].string,message:json["error"]["message"].string.isEmpty ? "Attachment request failed (\(http.statusCode))." : json["error"]["message"].string,state:.null)
+        }
+        return (data,http)
+    }
     private func request(_ path: String, body: [String: JSONValue]? = nil, authenticated: Bool = true) async throws -> JSONValue {
         guard let url = URL(string: path, relativeTo: baseURL)?.absoluteURL else { throw CasinoError.invalidEndpoint }
         let requestToken = token

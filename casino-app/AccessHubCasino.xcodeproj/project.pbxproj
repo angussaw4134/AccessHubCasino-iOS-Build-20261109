@@ -65,6 +65,46 @@
 			"isa" = "PBXBuildFile";
 			"fileRef" = "F523624F4CB9C247B200021E";
 		};
+		"1E9F02EFF3F23580C78D5EC8" = {
+			"isa" = "PBXFileReference";
+			"lastKnownFileType" = "sourcecode.swift";
+			"path" = "HubCommunityViews.swift";
+			"sourceTree" = "<group>";
+		};
+		"B370A23DECAE8FF80D439BBB" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "1E9F02EFF3F23580C78D5EC8";
+		};
+		"6CEEDE4419E87B0FF0E3EB23" = {
+			"isa" = "PBXFileReference";
+			"lastKnownFileType" = "sourcecode.swift";
+			"path" = "HubStore.swift";
+			"sourceTree" = "<group>";
+		};
+		"5D1028460A74306A33705798" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "6CEEDE4419E87B0FF0E3EB23";
+		};
+		"4FB9FBAC6B203F07A3C65A01" = {
+			"isa" = "PBXFileReference";
+			"lastKnownFileType" = "sourcecode.swift";
+			"path" = "HubViews.swift";
+			"sourceTree" = "<group>";
+		};
+		"5811156AC2E0FED52EE1B2CC" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "4FB9FBAC6B203F07A3C65A01";
+		};
+		"775549620E65EF14D7556B9F" = {
+			"isa" = "PBXFileReference";
+			"lastKnownFileType" = "sourcecode.swift";
+			"path" = "LiveSession.swift";
+			"sourceTree" = "<group>";
+		};
+		"4A0F8E006A47E8C5E21B662C" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "775549620E65EF14D7556B9F";
+		};
 		"64D6663A6F3BFBE15734A904" = {
 			"isa" = "PBXFileReference";
 			"lastKnownFileType" = "sourcecode.swift";
@@ -74,6 +114,16 @@
 		"D1B1E93CC8825EE71A6BC9AF" = {
 			"isa" = "PBXBuildFile";
 			"fileRef" = "64D6663A6F3BFBE15734A904";
+		};
+		"51DC1D838930250E007F2241" = {
+			"isa" = "PBXFileReference";
+			"lastKnownFileType" = "sourcecode.swift";
+			"path" = "PushCoordinator.swift";
+			"sourceTree" = "<group>";
+		};
+		"221536F4D1235A441A16621C" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "51DC1D838930250E007F2241";
 		};
 		"7165360DE488F2B7E22940FD" = {
 			"isa" = "PBXFileReference";
@@ -94,6 +144,16 @@
 		"92B72946635C9D75BA7E9D22" = {
 			"isa" = "PBXBuildFile";
 			"fileRef" = "C9D248F37F6705D78E3D6146";
+		};
+		"E5C0C582E7085782BDB19DB9" = {
+			"isa" = "PBXFileReference";
+			"lastKnownFileType" = "sourcecode.swift";
+			"path" = "SnakeViews.swift";
+			"sourceTree" = "<group>";
+		};
+		"0511F6EFDBBE1071E953E926" = {
+			"isa" = "PBXBuildFile";
+			"fileRef" = "E5C0C582E7085782BDB19DB9";
 		};
 		"7B281B5834FC2FFF02CCC69B" = {
 			"isa" = "PBXFileReference";
@@ -213,9 +273,15 @@
 				"D85D81DE995CB8D5464B5651",
 				"4BA5273AE65D02DE3BB347A5",
 				"F523624F4CB9C247B200021E",
+				"1E9F02EFF3F23580C78D5EC8",
+				"6CEEDE4419E87B0FF0E3EB23",
+				"4FB9FBAC6B203F07A3C65A01",
+				"775549620E65EF14D7556B9F",
 				"64D6663A6F3BFBE15734A904",
+				"51DC1D838930250E007F2241",
 				"7165360DE488F2B7E22940FD",
 				"C9D248F37F6705D78E3D6146",
+				"E5C0C582E7085782BDB19DB9",
 				"7B281B5834FC2FFF02CCC69B",
 				"033DDDACCF8F51ACDDB905A1",
 				"2BBA19478F9D88BE14A79ABC",
@@ -378,8 +444,8 @@
 			"isa" = "XCBuildConfiguration";
 			"buildSettings" = {
 				"ASSETCATALOG_COMPILER_APPICON_NAME" = "AppIcon";
-				"CURRENT_PROJECT_VERSION" = "2";
-				"MARKETING_VERSION" = "1.0";
+				"CURRENT_PROJECT_VERSION" = "3";
+				"MARKETING_VERSION" = "2.0";
 				"GENERATE_INFOPLIST_FILE" = "NO";
 				"INFOPLIST_FILE" = "AccessHubCasino/Info.plist";
 				"LD_RUNPATH_SEARCH_PATHS" = (
@@ -397,8 +463,8 @@
 			"isa" = "XCBuildConfiguration";
 			"buildSettings" = {
 				"ASSETCATALOG_COMPILER_APPICON_NAME" = "AppIcon";
-				"CURRENT_PROJECT_VERSION" = "2";
-				"MARKETING_VERSION" = "1.0";
+				"CURRENT_PROJECT_VERSION" = "3";
+				"MARKETING_VERSION" = "2.0";
 				"GENERATE_INFOPLIST_FILE" = "NO";
 				"INFOPLIST_FILE" = "AccessHubCasino/Info.plist";
 				"LD_RUNPATH_SEARCH_PATHS" = (
@@ -511,9 +577,15 @@
 				"0905ED5EC9748C10177138A6",
 				"C3EFFB075586F8C799006F45",
 				"425C5E3C0DD3D14B80C83741",
+				"B370A23DECAE8FF80D439BBB",
+				"5D1028460A74306A33705798",
+				"5811156AC2E0FED52EE1B2CC",
+				"4A0F8E006A47E8C5E21B662C",
 				"D1B1E93CC8825EE71A6BC9AF",
+				"221536F4D1235A441A16621C",
 				"160AA990260094B144B4D6DA",
 				"92B72946635C9D75BA7E9D22",
+				"0511F6EFDBBE1071E953E926",
 			);
 			"runOnlyForDeploymentPostprocessing" = 0;
 		};

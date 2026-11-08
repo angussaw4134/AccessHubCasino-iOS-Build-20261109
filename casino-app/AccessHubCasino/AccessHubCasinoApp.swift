@@ -1,14 +1,17 @@
 import SwiftUI
 
 @main @MainActor struct AccessHubCasinoApp: App {
+    @UIApplicationDelegateAdaptor(AccessHubAppDelegate.self) private var appDelegate
     @StateObject private var store = CasinoStore()
+    @StateObject private var hub = HubStore()
+    @StateObject private var push = PushCoordinator.shared
     @Environment(\.scenePhase) private var phase
     var body: some Scene {
         WindowGroup {
-            RootView().environmentObject(store).preferredColorScheme(.dark)
+            RootView().environmentObject(store).environmentObject(hub).environmentObject(push).preferredColorScheme(.dark)
                 .tint(AH.emerald)
                 .onChange(of: phase) { _, phase in
-                    if phase == .active { store.resume() } else { store.suspend() }
+                    if phase == .active { store.resume(); Task { await hub.resume() } } else { store.suspend(); hub.suspend() }
                 }
         }
     }
@@ -16,6 +19,8 @@ import SwiftUI
 
 struct RootView: View {
     @EnvironmentObject var store: CasinoStore
+    @EnvironmentObject var hub: HubStore
+    @EnvironmentObject var push: PushCoordinator
     @State private var launching = true
     var body: some View {
         ZStack {
@@ -33,6 +38,12 @@ struct RootView: View {
             withAnimation(store.reducedMotion ? nil : .easeOut(duration:0.45)) { launching = false }
             await launch
         }
+        .task(id:store.state["user"]["id"].string + ":" + String(store.sessionRevision)) {
+            await hub.attach(store)
+            await push.attach(hub:hub,casino:store)
+            if let id = push.pendingNotificationID { await push.open(id:id,hub:hub) }
+        }
+        .onChange(of:push.pendingNotificationID) { _,id in if let id { Task { await push.open(id:id,hub:hub) } } }
         .alert("AccessHub", isPresented: Binding(get:{ store.error != nil },set:{ if !$0 { store.error = nil } })) {
             Button("OK",role:.cancel) { store.error = nil }
         } message: { Text(store.error ?? "") }
@@ -61,7 +72,7 @@ struct WelcomeView: View {
                     VStack(alignment:.leading,spacing:10) {
                         Text("THE ART OF THE NEXT MOVE").font(.system(size:10,weight:.bold)).tracking(2).foregroundStyle(AH.emerald)
                         Text("A little strategy.\nA little possibility.").font(.system(size:34,weight:.medium,design:.serif))
-                        Text("Four original games. Start at 0 Access Hub Credits. Credits are added by an administrator.").font(.subheadline).foregroundStyle(AH.muted)
+                        Text("Games, free community rewards and friends in one place. Access Hub Credits start at 0 and are added by an administrator.").font(.subheadline).foregroundStyle(AH.muted)
                     }
                     VStack(spacing:12) {
                         Button {
@@ -85,13 +96,14 @@ struct WelcomeView: View {
 
 struct MainTabs: View {
     @EnvironmentObject var store: CasinoStore
+    @EnvironmentObject var hub: HubStore
     @State private var signIn = false
     var body: some View {
         TabView(selection:$store.selectedTab) {
-            NavigationStack { HomeView() }.tabItem { Label("Home",systemImage:"square.grid.2x2") }.tag(0)
-            NavigationStack { GamesView() }.tabItem { Label("Games",systemImage:"suit.spade") }.tag(1)
-            NavigationStack { CreditsView() }.tabItem { Label("Credits",systemImage:"circle.hexagongrid") }.tag(2)
-            NavigationStack { ProgressScreen() }.tabItem { Label("Progress",systemImage:"chart.bar.xaxis") }.tag(3)
+            NavigationStack { HubHomeView() }.tabItem { Label("Home",systemImage:"square.grid.2x2") }.tag(0)
+            NavigationStack { HubPlayView() }.tabItem { Label("Play",systemImage:"gamecontroller") }.tag(1)
+            NavigationStack { RewardsView() }.tabItem { Label("Rewards",systemImage:"gift") }.tag(2)
+            NavigationStack { CommunityView() }.tabItem { Label("Community",systemImage:"person.2") }.tag(3)
             NavigationStack { ProfileView() }.tabItem { Label("Profile",systemImage:"person.crop.circle") }.tag(4)
         }.toolbarBackground(AH.background,for:.tabBar).toolbarBackground(.visible,for:.tabBar)
             .safeAreaInset(edge:.top,spacing:0) {
@@ -107,6 +119,37 @@ struct MainTabs: View {
                 }
             }
             .sheet(isPresented:$signIn) { AccountView(register:false) }
+            .sheet(item:$hub.destination) { destination in HubDestinationSheet(destination:destination) }
+            .alert("AccessHub",isPresented:Binding(get:{ hub.error != nil },set:{ if !$0 { hub.error = nil } })) { Button("OK",role:.cancel) { hub.error = nil } } message: { Text(hub.error ?? "") }
+            .safeAreaInset(edge:.bottom,spacing:0) {
+                if hub.pending != nil { HStack { Text("Confirming your saved Hub request").font(.caption); Spacer(); Button("Retry") { Task { await hub.retry() } }.font(.caption.bold()).disabled(hub.busy) }.padding(12).background(AH.raised).foregroundStyle(AH.gold) }
+            }
+    }
+}
+
+struct HubDestinationSheet: View {
+    @Environment(\.dismiss) private var dismiss
+    let destination: HubDestination
+    var body: some View {
+        NavigationStack { content.toolbar { ToolbarItem(placement:.cancellationAction) { Button("Done") { dismiss() } } } }
+    }
+    @ViewBuilder private var content: some View {
+        switch destination {
+        case .daily: DailyRewardView()
+        case .giveaways: GiveawaysView()
+        case .vouchers: VoucherWalletView()
+        case .voucher(let id): VoucherWalletView(selectedID:id)
+        case .inventory: InventoryView()
+        case .marketplace: MarketplaceView()
+        case .points: PointsHistoryView()
+        case .friends: FriendsView()
+        case .support: HubSupportView()
+        case .ticket(let id): SupportTicketView(ticketID:id)
+        case .snake(let id): SnakeRoomView(roomID:id)
+        case .notifications: NotificationsView()
+        case .preferences: NotificationPreferencesView()
+        case .progress: HubProgressView()
+        }
     }
 }
 

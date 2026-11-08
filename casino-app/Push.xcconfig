@@ -1,0 +1,6 @@
+#include "Config.xcconfig"
+// Future owner-signed distribution only. Requires a matching push-enabled App ID,
+// provisioning profile, development team and configured provider backend.
+ACCESSHUB_PUSH_ENABLED = YES
+ACCESSHUB_PUSH_ENVIRONMENT = production
+CODE_SIGN_ENTITLEMENTS = AccessHubCasino/AccessHub.entitlements

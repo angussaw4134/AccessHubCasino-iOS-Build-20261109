@@ -48,6 +48,7 @@ struct SectionTitle: View {
 
 struct Brand: View {
     var compact = false
+    var casino = false
     var body: some View {
         HStack(spacing: 10) {
             Group {
@@ -57,10 +58,10 @@ struct Brand: View {
             if !compact {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("ACCESSHUB").font(.system(size: 17, weight: .semibold)).tracking(2.3)
-                    Text("C A S I N O").font(.system(size: 9, weight: .medium)).foregroundStyle(AH.muted)
+                    if casino { Text("C A S I N O").font(.system(size: 9, weight: .medium)).foregroundStyle(AH.muted) }
                 }
             }
-        }.accessibilityElement(children: .ignore).accessibilityLabel("AccessHub Casino")
+        }.accessibilityElement(children: .ignore).accessibilityLabel(casino ? "AccessHub Casino" : "AccessHub")
     }
 }
 
@@ -182,6 +183,8 @@ struct PlayingCard: View {
                         Spacer(minLength:0)
                         HStack { Spacer(); Text(card["rank"].string + suit).font(.system(size:max(10,g.size.width*0.18),weight:.bold,design:.serif)).rotationEffect(.degrees(180)) }
                     }.padding(max(5,g.size.width*0.09)).foregroundStyle(red ? Color(red:0.73,green:0.12,blue:0.23) : Color(red:0.08,green:0.14,blue:0.17))
+                } else if back.hasPrefix("hub|") {
+                    HubCardBack(specification:back)
                 } else {
                     RoundedRectangle(cornerRadius:5).strokeBorder(back == "royal" ? AH.gold : AH.emerald.opacity(0.8),lineWidth:1).padding(5)
                     VStack(spacing:3) { ForEach(0..<5) { _ in HStack(spacing:4) { ForEach(0..<3) { _ in Text(back == "circuit" ? "+" : "◆").font(.system(size:11)).foregroundStyle(back == "royal" ? AH.gold.opacity(0.7) : AH.emerald.opacity(0.5)) } } } }

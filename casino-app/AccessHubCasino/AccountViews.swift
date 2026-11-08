@@ -153,6 +153,7 @@ struct ProfileDecoration: View {
 
 struct ProfileView: View {
     @EnvironmentObject var store: CasinoStore
+    @EnvironmentObject var hub: HubStore
     @State private var register = false
     @State private var login = false
     @State private var confirmLogout = false
@@ -162,7 +163,12 @@ struct ProfileView: View {
     var body: some View {
         ScrollView {
             VStack(alignment:.leading,spacing:22) {
+                HubHeader()
                 HStack(spacing:16) { AvatarView(name:store.state["settings"]["avatar"].string).frame(width:70,height:70); VStack(alignment:.leading,spacing:7) { Text(store.state["user"]["isGuest"].bool ? "Your guest profile" : store.state["user"]["username"].string).font(.title2.weight(.semibold)); Text("Level \(store.state["progress"]["level"].int) · AccessHub member").font(.caption).foregroundStyle(AH.muted) } }
+                HubLinkCard(title:"Community profile & privacy",detail:hub.profile["displayName"].string,symbol:"person.crop.circle") { HubProfileSettingsView() }
+                HubLinkCard(title:"Hub level & collection",detail:"\(hub.points) Hub Points · cosmetic progression",symbol:"sparkles") { HubProgressView() }
+                HubLinkCard(title:"Access Hub Credits",detail:"\(Credits.format(store.balance)) · administrator funded",symbol:"circle.hexagongrid") { CreditsView() }.accessibilityIdentifier("profileCredits")
+                HubLinkCard(title:"Notifications",detail:"Inbox, categories and quiet hours",symbol:"bell") { NotificationsView() }
                 Panel { VStack(alignment:.leading,spacing:12) {
                     Text("Your account ID").font(.headline)
                     Text(store.state["user"]["id"].string).font(.system(.caption,design:.monospaced)).textSelection(.enabled).accessibilityIdentifier("profileAccountID")
@@ -190,13 +196,13 @@ struct ProfileView: View {
                 } }
                 Panel { VStack(spacing:18) { settingToggle("Sound effects",key:"sound"); settingToggle("Haptic feedback",key:"haptics"); settingToggle("Reduce motion",key:"reducedMotion"); Text("The iPhone's Reduce Motion setting is always respected. Sound and haptics are independent.").font(.caption2).foregroundStyle(AH.muted).frame(maxWidth:.infinity,alignment:.leading) } }
                 Panel { VStack(alignment:.leading,spacing:18) { Button { support = true } label: { Label("Help & support",systemImage:"questionmark.circle") }; NavigationLink { HistoryScreen(kind:"history",title:"Game history") } label: { Label("Game history",systemImage:"clock") }; Button { confirmLogout = true } label: { Label("Sign out",systemImage:"rectangle.portrait.and.arrow.right") }.disabled(!store.canAct || store.hasUnresolvedGames); Button(role:.destructive) { confirmDelete = true } label: { Label("Delete account and data",systemImage:"trash") }.disabled(!store.canAct || store.hasUnresolvedGames); if store.hasUnresolvedGames { Text("Finish your active rounds before signing out or deleting this account.").font(.caption2).foregroundStyle(AH.muted) } }.font(.subheadline) }
-                Text("AccessHub Casino · v1.0 · Build 2\nAccess Hub Credits").font(.caption2).foregroundStyle(AH.muted).multilineTextAlignment(.center).frame(maxWidth:.infinity)
+                Text("AccessHub · v1.1 · Build 3\nAccess Hub Credits & Hub Points").font(.caption2).foregroundStyle(AH.muted).multilineTextAlignment(.center).frame(maxWidth:.infinity)
             }.padding(20)
         }.pageBackground().navigationTitle("Profile").navigationBarTitleDisplayMode(.inline)
             .onChange(of:store.state["user"]["id"].string) { _,_ in copiedAccountID = false }
             .sheet(isPresented:$register) { AccountView(register:true) }
             .sheet(isPresented:$login) { AccountView(register:false) }
-            .sheet(isPresented:$support) { SupportView() }
+            .sheet(isPresented:$support) { HubDestinationSheet(destination:.support) }
             .alert("Sign out?",isPresented:$confirmLogout) { Button("Cancel",role:.cancel) {}; Button("Sign out",role:.destructive) { Task { await store.endSession() } } } message: { Text(store.state["user"]["isGuest"].bool ? "This is a guest account. Save your progress with a username and password first if you want to return to it." : "Your progress will be available when you sign in again.") }
             .alert("Delete your account?",isPresented:$confirmDelete) { Button("Cancel",role:.cancel) {}; Button("Delete permanently",role:.destructive) { Task { await store.endSession(delete:true) } } } message: { Text("This permanently removes your account, saved progress, credits and history. This cannot be undone.") }
     }

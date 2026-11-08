@@ -6,3 +6,7 @@ PRODUCT_BUNDLE_IDENTIFIER = app.accesshub.casino
 DEVELOPMENT_TEAM =
 // Connected UI tests create genuine free-credit guest activity. Opt in explicitly.
 ACCESSHUB_RUN_ONLINE_TESTS = 0
+// Loader builds use the in-app inbox. Owner-signed push is a separate opt-in.
+ACCESSHUB_PUSH_ENABLED = NO
+ACCESSHUB_PUSH_ENVIRONMENT =
+CODE_SIGN_ENTITLEMENTS =
