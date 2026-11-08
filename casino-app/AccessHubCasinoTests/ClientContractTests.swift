@@ -3,6 +3,14 @@ import Security
 @testable import AccessHubCasino
 
 final class ClientContractTests: XCTestCase {
+    func testRealtimeUsesJSONTextFramesForCloudflareRooms() throws {
+        let payload: [String:JSONValue] = ["type":.string("ready"),"id":.string("stable-room-command"),"acceptedStakeUnits":.number(100_000_000),"termsHash":.string("authoritative-terms")]
+        switch try RealtimeWire.message(payload) {
+        case .string(let text): XCTAssertEqual(try JSONValue.parse(Data(text.utf8)),.object(payload))
+        case .data: XCTFail("Binary frames are rejected by the authoritative room protocol.")
+        @unknown default: XCTFail("Unsupported WebSocket frame")
+        }
+    }
     func testHubCommandsRetainOwnerAndExactPayloadForRetry() throws {
         let command = HubCommand(id:"stable-market-request",ownerID:"original-casino-account",type:"market.buy",payload:["listingId":.string("listing-123"),"expectedPrice":.number(20)])
         let restored = try JSONDecoder().decode(HubCommand.self,from:JSONEncoder().encode(command))

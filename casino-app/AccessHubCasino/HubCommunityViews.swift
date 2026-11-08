@@ -116,9 +116,9 @@ struct NewSupportTicketView: View {
         NavigationStack { ScrollView { VStack(alignment:.leading,spacing:20) {
             SectionTitle(title:"Tell us what happened.",caption:"Do not include passwords. Add screenshots after opening your ticket.")
             TextField("Subject",text:$subject).fieldStyle()
-            Picker("Category",selection:$category) { Text("Account").tag("account"); Text("Games").tag("game"); Text("Rewards").tag("rewards"); Text("Other").tag("other") }.pickerStyle(.menu)
+            Picker("Category",selection:$category) { Text("Account").tag("account"); Text("Games").tag("games"); Text("Rewards").tag("rewards"); Text("Other").tag("other") }.pickerStyle(.menu)
             TextEditor(text:$message).frame(height:180).scrollContentBackground(.hidden).padding(12).background(AH.panel,in:RoundedRectangle(cornerRadius:16)).accessibilityLabel("Message")
-            Button("Send ticket") { Task { if await hub.action("support.create",["subject":.string(subject),"category":.string(category),"body":.string(message)]) { await hub.collection("support/tickets"); dismiss() } } }.buttonStyle(PrimaryButton()).disabled(!hub.canAct || subject.count < 3 || subject.count > 120 || message.count < 10 || message.count > 5000)
+            Button("Send ticket") { Task { if await hub.action("support.create",["subject":.string(subject),"category":.string(category),"body":.string(message)]) { await hub.collection("support/tickets"); dismiss() } } }.buttonStyle(PrimaryButton()).disabled(!hub.canAct || subject.count < 3 || subject.count > 100 || message.count < 10 || message.count > 4000)
         }.padding(22) }.pageBackground().navigationTitle("New ticket").toolbar { ToolbarItem(placement:.cancellationAction) { Button("Cancel") { dismiss() } } } }
     }
 }
@@ -149,7 +149,7 @@ struct SupportTicketView: View {
             }
             if ticket.exists && ticket["status"].string != "resolved" {
                 TextEditor(text:$message).frame(height:110).scrollContentBackground(.hidden).padding(12).background(AH.panel,in:RoundedRectangle(cornerRadius:16)).accessibilityLabel("Reply")
-                Button("Send reply") { Task { if await hub.action("support.reply",["ticketId":.string(ticketID),"body":.string(message)]) { message = ""; await load() } } }.buttonStyle(PrimaryButton()).disabled(!hub.canAct || message.trimmingCharacters(in:.whitespacesAndNewlines).isEmpty || message.count > 5000)
+                Button("Send reply") { Task { if await hub.action("support.reply",["ticketId":.string(ticketID),"body":.string(message)]) { message = ""; await load() } } }.buttonStyle(PrimaryButton()).disabled(!hub.canAct || message.trimmingCharacters(in:.whitespacesAndNewlines).isEmpty || message.count > 4000)
                 PhotosPicker(selection:$photo,matching:.images) { Label(uploading ? "Uploading screenshot…" : "Attach screenshot",systemImage:"paperclip") }.font(.subheadline).disabled(uploading || !hub.canAct)
                 Text("Images only, up to 5 MB. Attachments require account authorization to view.").font(.caption2).foregroundStyle(AH.muted)
                 Button("Mark resolved") { Task { if await hub.action("support.resolve",["ticketId":.string(ticketID)]) { await load() } } }.font(.caption).disabled(!hub.canAct)

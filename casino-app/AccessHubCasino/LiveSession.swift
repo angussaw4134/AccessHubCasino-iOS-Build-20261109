@@ -1,6 +1,14 @@
 import Foundation
 import SwiftUI
 
+enum RealtimeWire {
+    /// Cloudflare's room contract accepts JSON text frames, never binary data.
+    static func message(_ body: [String:JSONValue]) throws -> URLSessionWebSocketTask.Message {
+        let encoder = JSONEncoder(); encoder.outputFormatting = [.sortedKeys]
+        return .string(String(decoding:try encoder.encode(JSONValue.object(body)),as:UTF8.self))
+    }
+}
+
 @MainActor final class LiveSession: ObservableObject {
     @Published var snapshot: JSONValue = .null
     @Published var previous: JSONValue = .null
@@ -41,6 +49,7 @@ import SwiftUI
             while !Task.isCancelled && self.active && stamp == self.revision {
                 do {
                     guard store.state["user"]["id"].string == self.owner else { return }
+                    if store.needsSignIn { self.status = "Sign in to reconnect"; self.disconnect(); return }
                     let request = try store.socketRequest(path + "/ws")
                     let socket = URLSession.shared.webSocketTask(with:request)
                     self.socket = socket; self.recoveryCursor = self.lastSequence; socket.resume()
@@ -73,16 +82,18 @@ import SwiftUI
         guard connected else { error = "Reconnect before sending this action."; return }
         var body = fields; body["type"] = .string(type)
         if durable { let id = UUID().uuidString; body["id"] = .string(id); pending[id] = .object(body); persist() }
+        if ["send","reply","react","ready","leave"].contains(type) { store?.feedback("tap") }
         Task { await transmit(body) }
     }
     func direction(_ direction: String) {
         guard connected,room["phase"].string == "running",room["yourRole"].string == "player" else { return }
         inputSequence += 1
+        store?.feedback("tap")
         send("direction",fields:["seq":.number(Double(inputSequence)),"direction":.string(direction)],durable:false)
     }
     private func transmit(_ body: [String:JSONValue]) async {
         guard let socket else { return }
-        do { let data = try JSONEncoder().encode(JSONValue.object(body)); try await socket.send(.data(data)) }
+        do { try await socket.send(RealtimeWire.message(body)) }
         catch { connected = false; status = "Reconnecting · saved actions will be checked" }
     }
     private func receive(_ value: JSONValue) {
@@ -93,6 +104,8 @@ import SwiftUI
             error = value["error"]["message"].string
             let code = value["error"]["code"].string
             if !["service_unavailable","unauthorized","rate_limit"].contains(code) { pending.removeValue(forKey:value["id"].string); persist() }
+            if code == "unauthorized" { store?.needsSignIn = true; status = "Sign in to reconnect"; disconnect() }
+            else if ["moderated","account_restricted","forbidden"].contains(code) { status = "Access restricted"; disconnect() }
             return
         }
         if type == "ack" { pending.removeValue(forKey:value["id"].string); persist(); return }
@@ -101,6 +114,8 @@ import SwiftUI
             guard !snapshot.exists || value["seq"].int >= snapshot["seq"].int else { return }
             let justConnected = !connected
             connected = true; status = "Live"; previous = snapshot; snapshot = value; receivedAt = Date()
+            if previous["room"]["phase"].string == "running" && ["finished","cancelled"].contains(room["phase"].string) { store?.feedback("finish") }
+            if let mine = room["game"]["snakes"].array.first(where:{ $0.id == owner }),let before = previous["room"]["game"]["snakes"].array.first(where:{ $0.id == owner }),mine["score"].int > before["score"].int { store?.feedback("reveal") }
             if let snake = room["game"]["snakes"].array.first(where:{ $0.id == owner }) { inputSequence = max(inputSequence,snake["lastInputSeq"].int) }
             UserDefaults.standard.set(["roomID":room.id,"phase":room["phase"].string],forKey:"accesshub.snake.last.\(owner)")
             if justConnected { replay() }
@@ -156,6 +171,7 @@ struct ChatRoomView: View {
     @State private var draft = ""
     @State private var reply: JSONValue?
     @State private var report: JSONValue?
+    @State private var profile: JSONValue?
     var body: some View {
         VStack(spacing:0) {
             HStack { Circle().fill(live.connected ? AH.emerald : AH.gold).frame(width:6,height:6); Text(live.status); Spacer(); if live.connected { Text("\(live.presence) visible online") } }.font(.caption2).foregroundStyle(AH.muted).padding(14)
@@ -182,22 +198,42 @@ struct ChatRoomView: View {
         .onChange(of:scenePhase) { _,value in if value == .active { connect() } else { live.disconnect() } }
         .onChange(of:store.sessionRevision) { _,_ in live.disconnect(); draft = ""; reply = nil; connect() }
         .sheet(item:$report) { message in ReportUserView(userID:message["user"].id,name:message["user"]["username"].string,messageID:message.id,channel:channel) }
+        .sheet(item:$profile) { person in CommunityProfilePreview(person:person) }
     }
     private func connect() { live.connect(store:store,path:"/v2/chat/" + channel) }
     private func messageView(_ message: JSONValue) -> some View {
         Panel(padding:14) { VStack(alignment:.leading,spacing:8) {
             HStack { Text(message["user"]["username"].string).font(.caption.bold()).foregroundStyle(AH.emerald); Spacer(); Text(readableDate(message["createdAt"])).font(.system(size:9)).foregroundStyle(AH.muted) }
-            if message["parentId"].exists { Text("Reply").font(.caption2).foregroundStyle(AH.muted) }
+            if message["parentId"].exists { Text(live.messages.first(where:{ $0.id == message["parentId"].string })?["body"].string ?? "Reply to an earlier message").font(.caption2).foregroundStyle(AH.muted).lineLimit(2).padding(.leading,8).overlay(alignment:.leading) { Rectangle().fill(AH.emerald.opacity(0.4)).frame(width:2) } }
+            if message["replyUnavailable"].bool { Text("Reply unavailable").font(.caption2).foregroundStyle(AH.muted) }
             Text(message["deletedAt"].exists ? "Message removed" : message["body"].string).font(.subheadline).foregroundStyle(message["deletedAt"].exists ? AH.muted : AH.text).textSelection(.enabled)
             if !message["reactions"].array.isEmpty { HStack { ForEach(Array(message["reactions"].array.enumerated()),id:\.offset) { _,reaction in Text("\(reaction["emoji"].string) \(reaction["count"].int)").font(.caption) } } }
         } }.contextMenu {
+            Button("View profile") { profile = message["user"] }
             if !message["deletedAt"].exists {
                 Button("Reply") { reply = message }
-                ForEach(["👍","❤️","🎉","😂","🐍","💎"],id:\.self) { emoji in Button("React \(emoji)") { live.send("react",fields:["messageId":.string(message.id),"emoji":.string(emoji),"active":.bool(true)]) } }
-                Button("Remove my 👍 reaction") { live.send("react",fields:["messageId":.string(message.id),"emoji":.string("👍"),"active":.bool(false)]) }
+                ForEach(["👍","❤️","🎉","😂","🐍","💎"],id:\.self) { emoji in Menu("React \(emoji)") { Button("Add \(emoji)") { live.send("react",fields:["messageId":.string(message.id),"emoji":.string(emoji),"active":.bool(true)]) }; Button("Remove my \(emoji)") { live.send("react",fields:["messageId":.string(message.id),"emoji":.string(emoji),"active":.bool(false)]) } } }
             }
             if message["user"].id == hub.ownerID { Button("Delete message",role:.destructive) { live.send("delete",fields:["messageId":.string(message.id)]) } }
             else { Button("Report") { report = message }; Button("Block member",role:.destructive) { Task { if await hub.action("user.block",["userId":.string(message["user"].id)]) { live.disconnect(); live.messages = []; connect() } } } }
         }
+    }
+}
+
+struct CommunityProfilePreview: View {
+    @EnvironmentObject var hub: HubStore
+    @Environment(\.dismiss) private var dismiss
+    let person: JSONValue
+    var body: some View {
+        NavigationStack { VStack(alignment:.leading,spacing:24) {
+            CosmeticMotif(kind:"avatarFrame",art:person["avatar"].string).frame(height:130)
+            SectionTitle(title:person["username"].string,caption:"AccessHub community member")
+            if person.id != hub.ownerID {
+                Button("Send friend request") { Task { if await hub.action("friend.request",["userId":.string(person.id)]) { dismiss() } } }.buttonStyle(PrimaryButton()).disabled(!hub.canAct)
+                NavigationLink { SnakeLobbyView(inviteeID:person.id) } label: { Label("Invite to Snake",systemImage:"gamecontroller") }
+                NavigationLink { ReportUserView(userID:person.id,name:person["username"].string) } label: { Text("Report member") }
+            }
+            Spacer()
+        }.padding(24).pageBackground().navigationTitle("Profile").toolbar { ToolbarItem(placement:.cancellationAction) { Button("Done") { dismiss() } } } }
     }
 }

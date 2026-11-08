@@ -124,6 +124,8 @@ struct HubHomeView: View {
             ForEach(hub.bootstrap["invitations"].array) { invitation in
                 if !invitation["roomId"].string.isEmpty {
                     HubLinkCard(title:"A friend wants to play",detail:invitation["message"].string.isEmpty ? "Open your Snake invitation" : invitation["message"].string,symbol:"gamecontroller") { SnakeRoomView(roomID:invitation["roomId"].string) }
+                } else if invitation["direction"].string == "incoming" {
+                    HubLinkCard(title:"\(invitation["displayName"].string) sent a friend request",detail:"Review your invitations",symbol:"person.badge.plus") { FriendsView() }
                 }
             }
             SectionTitle(title:"Make your next move")
@@ -152,7 +154,7 @@ struct HubPlayView: View {
             HubLinkCard(title:"Private rooms & match history",detail:"Join a friend's room or revisit a finished match.",symbol:"person.2") { SnakeLobbyView() }
             SectionTitle(title:"AccessHub Casino",caption:"Four original games · Access Hub Credits")
             LazyVGrid(columns:[GridItem(.flexible()),GridItem(.flexible())],spacing:12) {
-                ForEach(CasinoGame.allCases) { game in NavigationLink { GameScreen(game:game) } label: { CompactGame(game:game) }.buttonStyle(.plain) }
+                ForEach(CasinoGame.allCases) { game in NavigationLink { GameScreen(game:game) } label: { CompactGame(game:game) }.buttonStyle(.plain).accessibilityLabel("Play " + game.title) }
             }
             HubLinkCard(title:"Casino credits & history",detail:"Every stake, return and administrator addition.",symbol:"circle.hexagongrid") { CreditsView() }.accessibilityIdentifier("openCasinoCredits")
             HubLinkCard(title:"Casino learning & rakeback",detail:"Your existing progress and 1% eligible stake returns.",symbol:"chart.bar.xaxis") { ProgressScreen() }.accessibilityIdentifier("openCasinoProgress")

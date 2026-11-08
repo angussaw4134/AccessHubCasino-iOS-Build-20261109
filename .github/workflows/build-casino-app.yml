@@ -13,6 +13,11 @@ on:
         required: true
         default: false
         type: boolean
+      hub_tests:
+        description: 'Exercise zero-credit Hub rewards, chat and solo Snake against isolated staging'
+        required: true
+        default: false
+        type: boolean
   push:
     paths: ['casino-app/**', '.github/workflows/build-casino-app.yml']
 
@@ -25,7 +30,9 @@ jobs:
     timeout-minutes: 40
     env:
       ONLINE_TESTS: ${{ inputs.online_tests && '1' || '0' }}
-      TEST_RUNNER_ACCESSHUB_RUN_ZERO_CREDIT_TESTS: ${{ inputs.zero_credit_tests && !inputs.online_tests && '1' || '0' }}
+      TEST_RUNNER_ACCESSHUB_RUN_ZERO_CREDIT_TESTS: ${{ (inputs.zero_credit_tests || inputs.hub_tests) && !inputs.online_tests && '1' || '0' }}
+      TEST_RUNNER_ACCESSHUB_RUN_HUB_TESTS: ${{ inputs.hub_tests && !inputs.online_tests && '1' || '0' }}
+      SIMULATOR_API_URL: ${{ inputs.hub_tests && 'https://accesshub-staging.fejiofasj.workers.dev' || 'https://accesshub-casino-native.fejiofasj.workers.dev' }}
     steps:
       - uses: actions/checkout@v4
       - name: Build arm64 iPhone IPA for loader signing
@@ -54,7 +61,7 @@ jobs:
             -destination "platform=iOS Simulator,id=$SMALL_ID" \
             -derivedDataPath casino-app/build/simulator \
             -resultBundlePath casino-app/build/Small-iPhone.xcresult \
-            ACCESSHUB_RUN_ONLINE_TESTS="$ONLINE_TESTS" CODE_SIGNING_ALLOWED=YES CODE_SIGN_IDENTITY=- \
+            ACCESSHUB_RUN_ONLINE_TESTS="$ONLINE_TESTS" ACCESSHUB_API_BASE_URL="$SIMULATOR_API_URL" CODE_SIGNING_ALLOWED=YES CODE_SIGN_IDENTITY=- \
             test 2>&1 | tee casino-app/build/small-iphone.log
       - name: Sanitize small simulator evidence
         id: sanitize_small
@@ -83,7 +90,7 @@ jobs:
             -destination "platform=iOS Simulator,id=$LARGE_ID" \
             -derivedDataPath casino-app/build/simulator \
             -resultBundlePath casino-app/build/Large-iPhone.xcresult \
-            ACCESSHUB_RUN_ONLINE_TESTS="$ONLINE_TESTS" CODE_SIGNING_ALLOWED=YES CODE_SIGN_IDENTITY=- \
+            ACCESSHUB_RUN_ONLINE_TESTS="$ONLINE_TESTS" ACCESSHUB_API_BASE_URL="$SIMULATOR_API_URL" CODE_SIGNING_ALLOWED=YES CODE_SIGN_IDENTITY=- \
             test 2>&1 | tee casino-app/build/large-iphone.log
       - name: Extract test summaries and screenshots
         if: always()
