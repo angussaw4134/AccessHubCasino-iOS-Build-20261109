@@ -60,23 +60,35 @@ jobs:
             -resultBundlePath ios/build/Large-iPhone.xcresult \
             ACCESSHUB_RUN_ONLINE_TESTS="$ONLINE_TESTS" CODE_SIGNING_ALLOWED=YES CODE_SIGN_IDENTITY=- \
             test 2>&1 | tee ios/build/large-iphone.log
-      - name: Export screenshot and test attachments
+      - name: Export test summaries and screenshots
         if: always()
         run: |
-          mkdir -p ios/build/attachments
+          mkdir -p ios/build/attachments ios/build/summaries
           for RESULT in ios/build/*.xcresult; do
             [ -d "$RESULT" ] || continue
             NAME=$(basename "$RESULT" .xcresult)
+            xcrun xcresulttool get test-results summary --path "$RESULT" \
+              > "ios/build/summaries/$NAME.json" || true
             xcrun xcresulttool export attachments --path "$RESULT" \
               --output-path "ios/build/attachments/$NAME" || true
           done
-      - uses: actions/upload-artifact@v4
+      - name: Sanitize test evidence
+        id: sanitize
         if: always()
+        env:
+          ACCESSHUB_TEST_USERNAME_SMALL: ${{ secrets.ACCESSHUB_TEST_USERNAME_SMALL }}
+          ACCESSHUB_TEST_PASSWORD_SMALL: ${{ secrets.ACCESSHUB_TEST_PASSWORD_SMALL }}
+          ACCESSHUB_TEST_USERNAME_LARGE: ${{ secrets.ACCESSHUB_TEST_USERNAME_LARGE }}
+          ACCESSHUB_TEST_PASSWORD_LARGE: ${{ secrets.ACCESSHUB_TEST_PASSWORD_LARGE }}
+        run: python3 ios/scripts/sanitize-test-evidence.py ios/build
+      - uses: actions/upload-artifact@v4
+        if: ${{ always() && steps.sanitize.outcome == 'success' }}
         with:
           name: Native-iOS-test-evidence
           if-no-files-found: warn
           retention-days: 14
           path: |
             ios/build/*.log
-            ios/build/*.xcresult
-            ios/build/attachments/**
+            ios/build/summaries/*.json
+            ios/build/attachments/**/*.png
+            ios/build/attachments/**/manifest.json

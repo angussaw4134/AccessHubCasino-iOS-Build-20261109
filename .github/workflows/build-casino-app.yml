@@ -50,8 +50,17 @@ jobs:
             -resultBundlePath casino-app/build/Small-iPhone.xcresult \
             ACCESSHUB_RUN_ONLINE_TESTS="$ONLINE_TESTS" CODE_SIGNING_ALLOWED=YES CODE_SIGN_IDENTITY=- \
             test 2>&1 | tee casino-app/build/small-iphone.log
-      - uses: actions/upload-artifact@v4
+      - name: Sanitize small simulator evidence
+        id: sanitize_small
         if: always()
+        env:
+          ACCESSHUB_TEST_USERNAME_SMALL: ${{ secrets.ACCESSHUB_TEST_USERNAME_SMALL }}
+          ACCESSHUB_TEST_PASSWORD_SMALL: ${{ secrets.ACCESSHUB_TEST_PASSWORD_SMALL }}
+          ACCESSHUB_TEST_USERNAME_LARGE: ${{ secrets.ACCESSHUB_TEST_USERNAME_LARGE }}
+          ACCESSHUB_TEST_PASSWORD_LARGE: ${{ secrets.ACCESSHUB_TEST_PASSWORD_LARGE }}
+        run: python3 casino-app/scripts/sanitize-test-evidence.py casino-app/build
+      - uses: actions/upload-artifact@v4
+        if: ${{ always() && steps.sanitize_small.outcome == 'success' }}
         with:
           name: AccessHubCasino-small-simulator-log
           if-no-files-found: ignore
@@ -70,18 +79,29 @@ jobs:
             -resultBundlePath casino-app/build/Large-iPhone.xcresult \
             ACCESSHUB_RUN_ONLINE_TESTS="$ONLINE_TESTS" CODE_SIGNING_ALLOWED=YES CODE_SIGN_IDENTITY=- \
             test 2>&1 | tee casino-app/build/large-iphone.log
-      - name: Extract test screenshots
+      - name: Extract test summaries and screenshots
         if: always()
         run: |
-          mkdir -p casino-app/build/attachments
+          mkdir -p casino-app/build/attachments casino-app/build/summaries
           for RESULT in casino-app/build/*.xcresult; do
             [ -d "$RESULT" ] || continue
             NAME=$(basename "$RESULT" .xcresult)
+            xcrun xcresulttool get test-results summary --path "$RESULT" \
+              > "casino-app/build/summaries/$NAME.json" || true
             xcrun xcresulttool export attachments --path "$RESULT" \
               --output-path "casino-app/build/attachments/$NAME" || true
           done
-      - uses: actions/upload-artifact@v4
+      - name: Sanitize final test evidence
+        id: sanitize_final
         if: always()
+        env:
+          ACCESSHUB_TEST_USERNAME_SMALL: ${{ secrets.ACCESSHUB_TEST_USERNAME_SMALL }}
+          ACCESSHUB_TEST_PASSWORD_SMALL: ${{ secrets.ACCESSHUB_TEST_PASSWORD_SMALL }}
+          ACCESSHUB_TEST_USERNAME_LARGE: ${{ secrets.ACCESSHUB_TEST_USERNAME_LARGE }}
+          ACCESSHUB_TEST_PASSWORD_LARGE: ${{ secrets.ACCESSHUB_TEST_PASSWORD_LARGE }}
+        run: python3 casino-app/scripts/sanitize-test-evidence.py casino-app/build
+      - uses: actions/upload-artifact@v4
+        if: ${{ always() && steps.sanitize_final.outcome == 'success' }}
         with:
           name: AccessHubCasino-build-and-test-evidence
           if-no-files-found: warn
@@ -89,5 +109,6 @@ jobs:
           path: |
             casino-app/build/loader/output/device-build.log
             casino-app/build/*.log
-            casino-app/build/*.xcresult
-            casino-app/build/attachments/**
+            casino-app/build/summaries/*.json
+            casino-app/build/attachments/**/*.png
+            casino-app/build/attachments/**/manifest.json
