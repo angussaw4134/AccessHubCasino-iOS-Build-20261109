@@ -1,15 +1,22 @@
 import XCTest
 
 final class AccessHubCasinoUITests: XCTestCase {
-    override func setUpWithError() throws { continueAfterFailure = false }
+    private var launchedApplication = false
+    override func setUpWithError() throws {
+        continueAfterFailure = false
+        launchedApplication = false
+    }
     override func tearDownWithError() throws {
-        // Always retain the final screen, including assertion failures.
+        // An offline XCTSkip never launches an app. Avoid asking the automation
+        // service for a SpringBoard screenshot during skipped-test teardown.
+        guard launchedApplication else { return }
+        // Retain the final screen for every launched test, including failures.
         let shot = XCTAttachment(screenshot:XCUIScreen.main.screenshot())
         shot.name = "Final screen - " + name; shot.lifetime = .keepAlways; add(shot)
     }
 
     func testWelcomeIsReadableAndAccountFormOpens() throws {
-        let app = XCUIApplication(); app.launch()
+        let app = launchApplication()
         if app.buttons["enterGuest"].waitForExistence(timeout:8) {
             XCTAssertTrue(app.staticTexts["A little strategy.\nA little possibility."].exists)
             app.buttons["Sign in to saved progress"].tap()
@@ -24,7 +31,7 @@ final class AccessHubCasinoUITests: XCTestCase {
     /// Set ACCESSHUB_RUN_ONLINE_TESTS=1 in this test's Xcode scheme environment.
     func testConnectedNavigationAndCompletedRounds() throws {
         try XCTSkipUnless(ProcessInfo.processInfo.environment["ACCESSHUB_RUN_ONLINE_TESTS"] == "1","Requires explicit online test opt-in and a deployed backend.")
-        let app = XCUIApplication(); app.launch(); connect(app)
+        let app = launchApplication(); connect(app)
         let brand = app.descendants(matching:.any).matching(identifier:"homeBrand").firstMatch
         XCTAssertTrue(app.frame.contains(brand.frame),"Home branding must fit within the small iPhone viewport.")
         XCTAssertTrue(app.frame.contains(app.buttons["Open profile"].frame),"Profile shortcut must not be clipped.")
@@ -78,7 +85,7 @@ final class AccessHubCasinoUITests: XCTestCase {
 
     func testConnectedSharedCrashEntryAndSettlement() throws {
         try XCTSkipUnless(ProcessInfo.processInfo.environment["ACCESSHUB_RUN_ONLINE_TESTS"] == "1","Requires a live backend and genuine shared round timing.")
-        let app = XCUIApplication(); app.launch(); connect(app)
+        let app = launchApplication(); connect(app)
         openGame("Crash",app:app)
         let previousResult = resultID(app,"crash")
         let enter = scrollTo("crashEnter",app:app)
@@ -91,6 +98,12 @@ final class AccessHubCasinoUITests: XCTestCase {
         }
         waitUntil(timeout:65) { self.result(app,"crash",excluding:previousResult).exists }
         attach(app,"Crash resolved position")
+    }
+    private func launchApplication() -> XCUIApplication {
+        let app = XCUIApplication()
+        app.launch()
+        launchedApplication = true
+        return app
     }
     private func openGame(_ name:String,app:XCUIApplication) {
         waitUntil(timeout:8) { app.tabBars.buttons["Games"].isHittable }
