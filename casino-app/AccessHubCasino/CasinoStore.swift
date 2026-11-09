@@ -66,7 +66,7 @@ import UIKit
             if guestID == nil { guestID = UUID().uuidString; try SessionVault.write(guestID!, account: "guest-id") }
             let response = try await request("/v1/guest", body: ["id": .string(guestID!)], authenticated: false)
             try acceptSession(response)
-            notice = pending == nil ? "Your account is ready. Credits are added by an administrator." : "Guest session restored. Checking your saved request."
+            notice = pending == nil ? "Your account is ready." : "Guest session restored. Checking your saved request."
             startPolling()
         } catch { self.error = error.localizedDescription }
     }
@@ -87,7 +87,7 @@ import UIKit
             let response = try await request("/v1/account/" + (register ? "register" : "login"), body: ["username": .string(username), "password": .string(password)], authenticated: register)
             try acceptSession(response)
             needsSignIn = false
-            notice = register ? "Your progress is now saved to your account." : "Welcome back. Your progress is restored."
+            notice = register ? "Your account is saved." : "Welcome back. Your account is restored."
             startPolling()
             return true
         } catch { self.error = error.localizedDescription; return false }
@@ -172,7 +172,7 @@ import UIKit
             while !Task.isCancelled {
                 guard let self else { return }
                 await self.refresh()
-                try? await Task.sleep(for: .seconds(1))
+                try? await Task.sleep(for: .seconds(20))
             }
         }
     }

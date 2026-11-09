@@ -7,13 +7,9 @@ struct HubHeader: View {
         HStack(spacing:16) {
             Brand().accessibilityIdentifier("homeBrand")
             Spacer()
-            Button { hub.destination = .support } label: { Image(systemName:"questionmark.bubble").font(.title3) }.accessibilityLabel("Help and support")
-            Button { hub.destination = .notifications } label: {
-                Image(systemName:"bell").font(.title3).overlay(alignment:.topTrailing) {
-                    if hub.bootstrap["unreadNotifications"].int > 0 { Circle().fill(AH.emerald).frame(width:7,height:7).offset(x:3,y:-3) }
-                }
-            }.accessibilityLabel("Notifications, \(hub.bootstrap["unreadNotifications"].int) unread")
-            Button { store.selectedTab = 4 } label: { HubAvatarView().frame(width:34,height:34) }.accessibilityLabel("Open profile")
+            Button { hub.destination = .profile } label: {
+                Image(systemName:"person.crop.circle").font(.title2).frame(width:44,height:44)
+            }.accessibilityLabel("Account")
         }.foregroundStyle(AH.text)
     }
 }

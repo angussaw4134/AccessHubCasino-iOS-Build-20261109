@@ -114,7 +114,7 @@ struct HubSupportView: View {
                 HubLinkCard(title:ticket["subject"].string,detail:ticket["status"].string.replacingOccurrences(of:"_",with:" ").capitalized + " · " + readableDate(ticket["updatedAt"]),symbol:"bubble.left") { SupportTicketView(ticketID:ticket.id) }
             }
             HubLoadMore(key:"support/tickets")
-        }.task { await hub.collection("support/articles"); await hub.collection("support/tickets") }
+        }.toolbar(.hidden,for:.navigationBar).task(id:hub.ownerID) { await hub.collection("support/articles"); await hub.collection("support/tickets") }
         .sheet(isPresented:$creating) { NewSupportTicketView() }
     }
 }
@@ -129,7 +129,7 @@ struct NewSupportTicketView: View {
         NavigationStack { ScrollView { VStack(alignment:.leading,spacing:20) {
             SectionTitle(title:"Tell us what happened.",caption:"Do not include passwords. Add screenshots after opening your ticket.")
             TextField("Subject",text:$subject).fieldStyle()
-            Picker("Category",selection:$category) { Text("Account").tag("account"); Text("Games").tag("games"); Text("Rewards").tag("rewards"); Text("Other").tag("other") }.pickerStyle(.menu)
+            Picker("Category",selection:$category) { Text("Account").tag("account"); Text("Add-ons").tag("other") }.pickerStyle(.menu)
             TextEditor(text:$message).frame(height:180).scrollContentBackground(.hidden).padding(12).background(AH.panel,in:RoundedRectangle(cornerRadius:16)).accessibilityLabel("Message")
             Button("Send ticket") { Task { if await hub.action("support.create",["subject":.string(subject),"category":.string(category),"body":.string(message)]) { await hub.collection("support/tickets"); dismiss() } } }.buttonStyle(PrimaryButton()).disabled(!hub.canAct || subject.count < 3 || subject.count > 100 || message.count < 10 || message.count > 4000)
         }.padding(22) }.pageBackground().navigationTitle("New ticket").toolbar { ToolbarItem(placement:.cancellationAction) { Button("Cancel") { dismiss() } } } }

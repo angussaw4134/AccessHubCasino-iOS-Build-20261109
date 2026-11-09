@@ -1,6 +1,10 @@
 # AccessHub for iPhone
 
-Native SwiftUI application, iOS 17+, Xcode 16 or newer, no third-party runtime dependencies. AccessHub 2.0 (build 3) contains Home, Play, Rewards, Community and Profile. The preserved AccessHub Casino section includes Crash, Blackjack, Mines, Slots and rakeback. Shared accounts, daily rewards, giveaways, voucher inventory, Hub Point marketplace, live chat, friends, authoritative Snake rooms, support and the notification inbox use the Cloudflare backend.
+AccessHub 2.1 (build 5) is a native SwiftUI app for iOS 17+ with two tabs: **Support** and **Add-ons**. Support retains existing authenticated tickets, replies, attachments and help articles. Add-ons lists **Scannable app — $2.99 / month**, without a description or checkout. This is a catalogue entry; it does not create a subscription or charge a payment.
+
+The Account button opens account ID, guest registration, sign-in, sign-out and account deletion. Existing bundle identifier, Keychain storage and backend are preserved for upgrades. Former game/community/reward screens are no longer reachable from the app navigation, including old notification destinations. Their stored backend data is not deleted. Historical build notes below refer to earlier versions, not this release.
+
+The current UI tests check the two tabs, support composer validation, account identity across relaunch and guest cleanup on isolated staging. Run the existing loader workflow with `hub_tests` enabled to use staging for simulator tests; the device IPA still points at production.
 
 New accounts start at 0 **Access Hub Credits**. Only an administrator can add credits; players have no refill or credit-purchase control. Profile displays a copyable account ID. Game returns and earned rakeback claims continue to work normally. Credits cannot be purchased, transferred or redeemed. **Hub Points** are a separate balance earned through free community rewards, with no conversion from casino credits or results.
 

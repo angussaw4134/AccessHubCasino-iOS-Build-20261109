@@ -96,8 +96,6 @@ enum HubDestination: Hashable, Identifiable {
         store.hubHasPending = pending != nil
         await refresh()
         guard epoch == generation else { return }
-        await loadLearning()
-        guard epoch == generation else { return }
         if pending != nil { await retry() }
         guard epoch == generation else { return }
         refreshTask = Task { [weak self] in

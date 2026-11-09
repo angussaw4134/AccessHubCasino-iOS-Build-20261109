@@ -28,7 +28,7 @@ struct RootView: View {
             if store.authenticated { MainTabs() }
             else { WelcomeView() }
             if launching {
-                ZStack { AH.background.ignoresSafeArea(); VStack(spacing:24) { Brand(); Rectangle().fill(AH.emerald).frame(width:32,height:2); Text("YOUR NEXT MOVE").font(.caption2).tracking(3).foregroundStyle(AH.muted) } }
+                ZStack { AH.background.ignoresSafeArea(); VStack(spacing:24) { Brand(); Rectangle().fill(AH.emerald).frame(width:32,height:2); Text("SUPPORT & ADD-ONS").font(.caption2).tracking(3).foregroundStyle(AH.muted) } }
                     .transition(.opacity).zIndex(10)
             }
         }
@@ -47,17 +47,7 @@ struct RootView: View {
         .alert("AccessHub", isPresented: Binding(get:{ store.error != nil },set:{ if !$0 { store.error = nil } })) {
             Button("OK",role:.cancel) { store.error = nil }
         } message: { Text(store.error ?? "") }
-        .sheet(item: Binding(get:{ store.levelUp.map(LevelNotice.init) },set:{ if $0 == nil { store.levelUp = nil } })) { level in
-            VStack(spacing:24) {
-                GemArt().frame(width:76,height:88).shadow(color:AH.emerald.opacity(0.3),radius:22)
-                Text("Level \(level.id)").font(.system(size:38,weight:.bold,design:.rounded))
-                Text("More to make your own.").font(.title3)
-                Text("Explore your new cosmetics in Profile. Game probabilities, payouts and 1% rakeback stay the same.").font(.subheadline).foregroundStyle(AH.muted).multilineTextAlignment(.center)
-                Button("Keep exploring") { store.levelUp = nil }.buttonStyle(PrimaryButton())
-            }.padding(30).presentationDetents([.medium]).presentationDragIndicator(.visible).presentationBackground(AH.panel)
-        }
     }
-    struct LevelNotice: Identifiable { let id: Int }
 }
 
 struct WelcomeView: View {
@@ -68,11 +58,11 @@ struct WelcomeView: View {
             ScrollView {
                 VStack(alignment:.leading,spacing:24) {
                     Brand().padding(.top,24)
-                    GameArtwork(game:.blackjack).frame(height:max(160,min(geometry.size.height*0.32,280))).clipShape(RoundedRectangle(cornerRadius:26))
+                    Image(systemName:"bubble.left.and.bubble.right.fill").font(.system(size:64)).foregroundStyle(AH.emerald).frame(maxWidth:.infinity).frame(height:max(150,min(geometry.size.height*0.26,220))).background(AH.panel,in:RoundedRectangle(cornerRadius:26))
                     VStack(alignment:.leading,spacing:10) {
-                        Text("THE ART OF THE NEXT MOVE").font(.system(size:10,weight:.bold)).tracking(2).foregroundStyle(AH.emerald)
-                        Text("A little strategy.\nA little possibility.").font(.system(size:34,weight:.medium,design:.serif))
-                        Text("Games, free community rewards and friends in one place. Access Hub Credits start at 0 and are added by an administrator.").font(.subheadline).foregroundStyle(AH.muted)
+                        Text("WELCOME TO ACCESSHUB").font(.system(size:10,weight:.bold)).tracking(2).foregroundStyle(AH.emerald)
+                        Text("Support, simplified.").font(.system(size:34,weight:.medium,design:.serif))
+                        Text("Your conversations and add-ons, together in one place.").font(.subheadline).foregroundStyle(AH.muted)
                     }
                     VStack(spacing:12) {
                         Button {
@@ -81,13 +71,13 @@ struct WelcomeView: View {
                         } label: {
                             HStack {
                                 if store.busy || store.connecting { ProgressView().tint(AH.background) }
-                                Text(store.connecting ? "Restoring your session…" : store.busy ? "Opening your account…" : store.needsSignIn ? (store.canRestoreGuest ? "Restore guest access" : "Sign in to restore progress") : "Enter as guest")
+                                Text(store.connecting ? "Restoring your session…" : store.busy ? "Opening your account…" : store.needsSignIn ? (store.canRestoreGuest ? "Restore guest access" : "Sign in to your account") : "Enter as guest")
                                 Spacer(); Image(systemName:"arrow.right")
                             }
                         }.buttonStyle(PrimaryButton()).disabled(store.busy || store.connecting).accessibilityIdentifier("enterGuest")
-                        Button("Sign in to saved progress") { signingIn = true }.font(.subheadline.weight(.medium)).padding(8)
+                        Button("Sign in") { signingIn = true }.font(.subheadline.weight(.medium)).padding(8)
                     }
-                    Text("Access Hub Credits cannot be purchased or transferred, and cannot be redeemed for money or prizes.").font(.caption).foregroundStyle(AH.muted).fixedSize(horizontal:false,vertical:true)
+                    Text("Use your existing AccessHub account to keep your conversations together.").font(.caption).foregroundStyle(AH.muted).fixedSize(horizontal:false,vertical:true)
                 }.padding(24).frame(minHeight:geometry.size.height,alignment:.top)
             }
         }.sheet(isPresented:$signingIn) { AccountView(register:false) }.pageBackground()
@@ -100,11 +90,8 @@ struct MainTabs: View {
     @State private var signIn = false
     var body: some View {
         TabView(selection:$store.selectedTab) {
-            NavigationStack { HubHomeView() }.tabItem { Label("Home",systemImage:"square.grid.2x2") }.tag(0)
-            NavigationStack { HubPlayView() }.tabItem { Label("Play",systemImage:"gamecontroller") }.tag(1)
-            NavigationStack { RewardsView() }.tabItem { Label("Rewards",systemImage:"gift") }.tag(2)
-            NavigationStack { CommunityView() }.tabItem { Label("Community",systemImage:"person.2") }.tag(3)
-            NavigationStack { ProfileView() }.tabItem { Label("Profile",systemImage:"person.crop.circle") }.tag(4)
+            NavigationStack { HubSupportView() }.tabItem { Label("Support",systemImage:"bubble.left.and.bubble.right") }.tag(0)
+            NavigationStack { AddOnsView() }.tabItem { Label("Add-ons",systemImage:"square.stack.3d.up") }.tag(1)
         }.toolbarBackground(AH.background,for:.tabBar).toolbarBackground(.visible,for:.tabBar)
             .safeAreaInset(edge:.top,spacing:0) {
                 if !store.online || store.pending != nil || store.needsSignIn {
@@ -120,9 +107,6 @@ struct MainTabs: View {
             }
             .sheet(isPresented:$signIn) { AccountView(register:false) }
             .sheet(item:$hub.destination) { destination in HubDestinationSheet(destination:destination) }
-            .overlay(alignment:.top) {
-                if let level = hub.hubLevelUp { HStack(spacing:12) { Image(systemName:"sparkles").foregroundStyle(AH.gold); VStack(alignment:.leading,spacing:4) { Text("Hub level \(level)").font(.headline); Text("A little more you. Explore your collection.").font(.caption).foregroundStyle(AH.muted) }; Spacer(); Button("Done") { hub.hubLevelUp = nil }.font(.caption.bold()) }.padding(18).background(AH.raised,in:RoundedRectangle(cornerRadius:18)).padding(14).transition(.opacity).animation(store.reducedMotion ? nil : .easeOut(duration:0.25),value:hub.hubLevelUp) }
-            }
             .alert("AccessHub",isPresented:Binding(get:{ hub.error != nil },set:{ if !$0 { hub.error = nil } })) { Button("OK",role:.cancel) { hub.error = nil } } message: { Text(hub.error ?? "") }
             .safeAreaInset(edge:.bottom,spacing:0) {
                 if hub.pending != nil { HStack { Text("Confirming your saved Hub request").font(.caption); Spacer(); Button("Retry") { Task { await hub.retry() } }.font(.caption.bold()).disabled(hub.busy) }.padding(12).background(AH.raised).foregroundStyle(AH.gold) }
@@ -138,26 +122,9 @@ struct HubDestinationSheet: View {
     }
     @ViewBuilder private var content: some View {
         switch destination {
-        case .home: HubHomeView()
-        case .profile: HubProfileSettingsView()
-        case .daily: DailyRewardView()
-        case .giveaways: GiveawaysView()
-        case .vouchers: VoucherWalletView()
-        case .voucher(let id): VoucherWalletView(selectedID:id)
-        case .inventory: InventoryView()
-        case .marketplace: MarketplaceView(initialFilter:"history")
-        case .marketplaceBrowse: MarketplaceView()
-        case .points: PointsHistoryView()
-        case .friends: FriendsView(initialFilter:"requests")
-        case .support: HubSupportView()
+        case .profile: SupportAccountView()
         case .ticket(let id): SupportTicketView(ticketID:id)
-        case .snake(let id): SnakeRoomView(roomID:id)
-        case .snakeLobby: SnakeLobbyView()
-        case .casino: CasinoCollectionView()
-        case .game(let name): if let game = CasinoGame(rawValue:name) { GameScreen(game:game) }
-        case .notifications: NotificationsView()
-        case .preferences: NotificationPreferencesView()
-        case .progress: HubProgressView()
+        default: HubSupportView()
         }
     }
 }
@@ -174,9 +141,9 @@ struct AccountView: View {
             ScrollView {
                 VStack(alignment:.leading,spacing:24) {
                     Brand()
-                    SectionTitle(title:register ? "Keep your place." : "Welcome back.",caption:register ? "Save this guest account and restore it on your other devices." : "Sign in to restore your credits, history and progress.")
+                    SectionTitle(title:register ? "Keep your place." : "Welcome back.",caption:register ? "Save this guest account and its conversations for your other devices." : "Sign in to access your existing conversations.")
                     if success {
-                        Panel { VStack(alignment:.leading,spacing:14) { Label("Progress saved",systemImage:"checkmark.circle.fill").foregroundStyle(AH.emerald); Text(store.notice ?? "Your account is ready."); Button("Continue") { dismiss() }.buttonStyle(PrimaryButton()) } }
+                        Panel { VStack(alignment:.leading,spacing:14) { Label("Account saved",systemImage:"checkmark.circle.fill").foregroundStyle(AH.emerald); Text(store.notice ?? "Your account is ready."); Button("Continue") { dismiss() }.buttonStyle(PrimaryButton()) } }
                     } else {
                         VStack(alignment:.leading,spacing:16) {
                             if let error = store.error { Text(error).font(.subheadline).foregroundStyle(AH.danger).accessibilityIdentifier("accountError") }
@@ -187,11 +154,72 @@ struct AccountView: View {
                         }
                     }
                 }.padding(24)
-            }.pageBackground().navigationTitle(register ? "Save progress" : "Sign in").navigationBarTitleDisplayMode(.inline)
+            }.pageBackground().navigationTitle(register ? "Save account" : "Sign in").navigationBarTitleDisplayMode(.inline)
                 .toolbar { ToolbarItem(placement:.cancellationAction) { Button("Close") { dismiss() } } }
                 .onChange(of:store.state["user"]["username"].string) { _,name in
                     if register && !name.isEmpty && name.lowercased() == username.lowercased() { success = true }
                 }
         }
+    }
+}
+
+
+struct AddOnsView: View {
+    var body: some View {
+        HubPage(title:"Add-ons") {
+            Panel(padding:24) {
+                VStack(alignment:.leading,spacing:24) {
+                    Image(systemName:"square.stack.3d.up.fill")
+                        .font(.system(size:30)).foregroundStyle(AH.emerald)
+                        .frame(width:64,height:64).background(AH.emerald.opacity(0.10),in:RoundedRectangle(cornerRadius:18))
+                    Text("Scannable app").font(.title2.weight(.semibold))
+                    (Text("$2.99").font(.system(size:36,weight:.semibold,design:.rounded)) + Text(" / month").font(.subheadline))
+                        .accessibilityLabel("2 dollars and 99 cents per month")
+                }.frame(maxWidth:.infinity,alignment:.leading)
+            }.accessibilityIdentifier("scannableAddon")
+        }.toolbar(.hidden,for:.navigationBar)
+    }
+}
+
+struct SupportAccountView: View {
+    @EnvironmentObject var store: CasinoStore
+    @State private var register = false
+    @State private var login = false
+    @State private var confirmLogout = false
+    @State private var confirmDelete = false
+    @State private var copied = false
+    var body: some View {
+        ScrollView {
+            VStack(alignment:.leading,spacing:22) {
+                SectionTitle(title:store.state["user"]["isGuest"].bool ? "Your guest account" : store.state["user"]["username"].string)
+                Panel { VStack(alignment:.leading,spacing:14) {
+                    Text("Account ID").font(.headline)
+                    Text(store.state["user"]["id"].string).font(.system(.caption,design:.monospaced)).textSelection(.enabled).accessibilityIdentifier("profileAccountID")
+                    Button(copied ? "Copied" : "Copy account ID") { UIPasteboard.general.string = store.state["user"]["id"].string; copied = true }.accessibilityIdentifier("copyAccountID")
+                } }
+                if store.state["user"]["isGuest"].bool {
+                    Panel { VStack(alignment:.leading,spacing:16) {
+                        Text("Keep your conversations").font(.headline)
+                        Text("Save your guest account to sign in on another device.").font(.subheadline).foregroundStyle(AH.muted)
+                        Button("Save my account") { register = true }.buttonStyle(PrimaryButton()).disabled(!store.canAct)
+                        Button("Sign in to an existing account") { login = true }.disabled(store.busy || store.pending != nil)
+                    } }
+                }
+                Panel { VStack(alignment:.leading,spacing:22) {
+                    Button("Sign out") { confirmLogout = true }.disabled(!store.canAct)
+                    Button("Delete account and data",role:.destructive) { confirmDelete = true }.disabled(!store.canAct)
+                } }
+            }.padding(22)
+        }.pageBackground().navigationTitle("Account").navigationBarTitleDisplayMode(.inline)
+        .sheet(isPresented:$register) { AccountView(register:true) }
+        .sheet(isPresented:$login) { AccountView(register:false) }
+        .alert("Sign out?",isPresented:$confirmLogout) {
+            Button("Cancel",role:.cancel) {}
+            Button("Sign out",role:.destructive) { Task { await store.endSession() } }
+        } message: { Text(store.state["user"]["isGuest"].bool ? "Save this guest account first if you want to return to its conversations." : "Your conversations will be available when you sign in again.") }
+        .alert("Delete your account?",isPresented:$confirmDelete) {
+            Button("Cancel",role:.cancel) {}
+            Button("Delete permanently",role:.destructive) { Task { await store.endSession(delete:true) } }
+        } message: { Text("This permanently removes account access and saved data. Audit records are retained. This cannot be undone.") }
     }
 }
