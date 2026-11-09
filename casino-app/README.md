@@ -8,6 +8,8 @@ The existing `app.accesshub.casino` bundle identifier, `AccessHubCasino` interna
 
 Current acceptance uses the `hub_tests` workflow input: fresh zero-credit guests on the staging backend, daily claim, genuine chat connection, a completed authoritative solo Snake round, navigation and disabled zero-balance casino stakes. Device IPA configuration remains the production backend. No funded fixture credentials are needed or exported for this run. See the final release evidence for the actual result; historical build-1/build-2 runs below do not establish build-3 acceptance.
 
+Build 3's device IPA compiled on Xcode 16.4 with the iOS 18.5 SDK in [run 42540801600](https://github.com/angussaw4134/AccessHubCasino-iOS-Build-20261109/actions/runs/42540801600), production commit `9e033935be92365dbf5b0c52da6778364422e5fe`. The small iPhone passed 14 contract tests and two UI journeys. Its larger-device test created a duel room after an unverified Solo tap and failed waiting for a solo result. A test-only change added visibility and actual selection assertions before creating the room; [large-device retest 42542975769](https://github.com/angussaw4134/AccessHubCasino-iOS-Build-20261109/actions/runs/42542975769) passed all 16 enabled tests, with screenshots confirming Solo selection and its completed server result. Production source and the retained IPA are unchanged. Both devices ran iOS 26.2; two funded Casino tests per device were intentionally skipped. The accepted IPA SHA-256 is `855b606e1e15900d4deeb6745eb81ddb10bd062e284722673c62b4381ad23b83`. Screenshots were reviewed; physical-device installation and frame rate remain unverified.
+
 ## Open and run
 
 1. Copy this project to a Mac with Xcode and open `AccessHubCasino.xcodeproj`.
