@@ -80,14 +80,14 @@ jobs:
           retention-days: 14
           path: casino-app/build/small-iphone.log
       - name: Prepare larger iPhone simulator
-        if: ${{ always() && env.LARGE_ID != '' && steps.device.outcome == 'success' }}
+        if: ${{ always() && !cancelled() && env.LARGE_ID != '' && steps.device.outcome == 'success' }}
         run: |
           # Release the small simulator before launching the next UI runner.
           xcrun simctl shutdown "$SMALL_ID" || true
           xcrun simctl boot "$LARGE_ID" || true
           xcrun simctl bootstatus "$LARGE_ID" -b
       - name: Test larger iPhone
-        if: ${{ always() && env.LARGE_ID != '' && steps.device.outcome == 'success' }}
+        if: ${{ always() && !cancelled() && env.LARGE_ID != '' && steps.device.outcome == 'success' }}
         env:
           TEST_RUNNER_ACCESSHUB_TEST_USERNAME: ${{ inputs.online_tests && secrets.ACCESSHUB_TEST_USERNAME_LARGE || '' }}
           TEST_RUNNER_ACCESSHUB_TEST_PASSWORD: ${{ inputs.online_tests && secrets.ACCESSHUB_TEST_PASSWORD_LARGE || '' }}
