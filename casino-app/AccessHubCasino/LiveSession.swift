@@ -174,7 +174,7 @@ struct ChatRoomView: View {
     @State private var profile: JSONValue?
     var body: some View {
         VStack(spacing:0) {
-            HStack { Circle().fill(live.connected ? AH.emerald : AH.gold).frame(width:6,height:6); Text(live.status); Spacer(); if live.connected { Text("\(live.presence) visible online") } }.font(.caption2).foregroundStyle(AH.muted).padding(14)
+            HStack { Circle().fill(live.connected ? AH.emerald : AH.gold).frame(width:6,height:6); Text(live.status).accessibilityIdentifier("chatConnection"); Spacer(); if live.connected { Text("\(live.presence) visible online") } }.font(.caption2).foregroundStyle(AH.muted).padding(14)
             if let error = live.error { HStack { Text(error).font(.caption).foregroundStyle(AH.gold); Spacer(); Button("Dismiss") { live.error = nil }.font(.caption) }.padding(.horizontal,16) }
             ScrollViewReader { proxy in
                 ScrollView { LazyVStack(alignment:.leading,spacing:12) {

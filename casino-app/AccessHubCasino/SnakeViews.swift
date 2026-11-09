@@ -89,6 +89,7 @@ struct SnakeRoomView: View {
         ScrollView { VStack(alignment:.leading,spacing:16) {
             HStack { VStack(alignment:.leading,spacing:4) { Text(room["mode"].string == "solo" ? "Solo practice" : "Live Snake").font(.title2.bold()); Text(live.status).font(.caption).foregroundStyle(live.connected ? AH.emerald : AH.gold) }; Spacer(); Button { rules = true } label: { Image(systemName:"info.circle") }.accessibilityLabel("Snake rules") }
             if let error = live.error { Text(error).font(.caption).foregroundStyle(AH.danger) }
+            if !live.connected { Button("Reconnect to room") { Task { await restore() } }.font(.caption.bold()) }
             if room["yourRole"].string == "spectator" { Label("Spectating · \(room["spectatorCount"].int) viewers",systemImage:"eye").font(.caption).foregroundStyle(AH.muted) }
             HStack(alignment:.top,spacing:12) { ForEach(room["players"].array) { player in VStack(alignment:.leading,spacing:5) { Text(player["username"].string).font(.caption.bold()).lineLimit(1); Text(player["ready"].bool ? "Ready" : "Not ready").font(.caption2).foregroundStyle(player["ready"].bool ? AH.emerald : AH.muted); if let snake = room["game"]["snakes"].array.first(where:{ $0.id == player.id }) { Text("\(snake["score"].int) food").font(.headline) }; if !player["connected"].bool { Text("Reconnecting").font(.caption2).foregroundStyle(AH.gold) } }.frame(maxWidth:.infinity,alignment:.leading) } }
             ZStack {

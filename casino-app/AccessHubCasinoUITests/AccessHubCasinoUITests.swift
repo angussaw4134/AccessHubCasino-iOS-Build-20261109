@@ -158,6 +158,7 @@ final class AccessHubCasinoUITests: XCTestCase {
             app.tabBars.buttons["Community"].tap()
             scrollTo("globalChatShortcut",app:app).tap()
             XCTAssertTrue(app.textFields["Message the room"].waitForExistence(timeout:20))
+            waitUntil(timeout:20) { app.staticTexts["chatConnection"].label == "Live" }
             attach(app,"Hub real community chat")
             openPlayRoot(app)
             for _ in 0..<5 { app.swipeDown() }
