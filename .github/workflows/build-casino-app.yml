@@ -69,6 +69,15 @@ jobs:
             -resultBundlePath casino-app/build/Small-iPhone.xcresult \
             ACCESSHUB_RUN_ONLINE_TESTS="$ONLINE_TESTS" ACCESSHUB_API_BASE_URL="$SIMULATOR_API_URL" CODE_SIGNING_ALLOWED=YES CODE_SIGN_IDENTITY=- \
             test 2>&1 | tee casino-app/build/small-iphone.log
+      - name: Extract small iPhone screenshots early
+        if: always()
+        run: |
+          RESULT=casino-app/build/Small-iPhone.xcresult
+          if [ -d "$RESULT" ]; then
+            mkdir -p casino-app/build/attachments/Small-iPhone casino-app/build/summaries
+            xcrun xcresulttool get test-results summary --path "$RESULT" > casino-app/build/summaries/Small-iPhone.json || true
+            xcrun xcresulttool export attachments --path "$RESULT" --output-path casino-app/build/attachments/Small-iPhone || true
+          fi
       - name: Sanitize small simulator evidence
         id: sanitize_small
         if: always()
@@ -84,7 +93,11 @@ jobs:
           name: AccessHubCasino-small-simulator-log
           if-no-files-found: ignore
           retention-days: 14
-          path: casino-app/build/small-iphone.log
+          path: |
+            casino-app/build/small-iphone.log
+            casino-app/build/summaries/Small-iPhone.json
+            casino-app/build/attachments/Small-iPhone/**/*.png
+            casino-app/build/attachments/Small-iPhone/**/manifest.json
       - name: Prepare larger iPhone simulator
         if: ${{ always() && !cancelled() && env.LARGE_ID != '' && steps.device.outcome == 'success' }}
         run: |
