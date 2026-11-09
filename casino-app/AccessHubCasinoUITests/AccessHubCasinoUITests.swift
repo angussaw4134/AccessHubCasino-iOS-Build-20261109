@@ -176,6 +176,10 @@ final class AccessHubCasinoUITests: XCTestCase {
             createSolo.tap()
             let ready = scrollTo("Accept terms & ready",app:app)
             waitEnabled(ready,timeout:20); ready.tap()
+            let steering = app.otherElements["Steering"].firstMatch
+            XCTAssertTrue(steering.waitForExistence(timeout:12),"Continuous arena must expose its steering control after countdown.")
+            attach(app,"Snake continuous arena running")
+            XCTAssertTrue(app.staticTexts["PRACTICE · COMPUTER OPPONENTS"].exists,"Practice opponents must be labelled as computer controlled.")
             XCTAssertTrue(app.staticTexts["snakeResult"].waitForExistence(timeout:30))
             attach(app,"Hub authoritative solo Snake completed")
         }
