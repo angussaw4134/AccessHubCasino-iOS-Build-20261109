@@ -32,6 +32,8 @@ enum RealtimeWire {
     private var active = false
     private var lastSequence = 0
     private var inputSequence = 0
+    private var lastSteerAt = Date.distantPast
+    private var sentBoost = false
     private var recoveryCursor = 0
     private var journalKey: String { "accesshub.live.pending.v2.\(owner).\(path)" }
     var room: JSONValue { snapshot["room"] }
@@ -90,6 +92,13 @@ enum RealtimeWire {
         inputSequence += 1
         store?.feedback("tap")
         send("direction",fields:["seq":.number(Double(inputSequence)),"direction":.string(direction)],durable:false)
+    }
+    func steer(angle: Double,boost: Bool) {
+        guard angle.isFinite,connected,room["phase"].string == "running",room["yourRole"].string == "player",room["rules"]["version"].int == 2 else { return }
+        let now = Date()
+        guard now.timeIntervalSince(lastSteerAt) >= 0.05 || (sentBoost && !boost) else { return }
+        lastSteerAt = now; sentBoost = boost; inputSequence += 1
+        send("steer",fields:["seq":.number(Double(inputSequence)),"angle":.number(atan2(sin(angle),cos(angle))),"boost":.bool(boost)],durable:false)
     }
     private func transmit(_ body: [String:JSONValue]) async {
         guard let socket else { return }
