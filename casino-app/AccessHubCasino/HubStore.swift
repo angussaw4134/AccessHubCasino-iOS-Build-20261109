@@ -204,7 +204,9 @@ enum HubDestination: Hashable, Identifiable {
             await collection("notifications")
         }
     }
-    static func escape(_ value: String) -> String { value.addingPercentEncoding(withAllowedCharacters:.alphanumerics) ?? "" }
+    nonisolated static func escape(_ value: String) -> String {
+        value.addingPercentEncoding(withAllowedCharacters:.alphanumerics.union(CharacterSet(charactersIn:"-._~"))) ?? ""
+    }
 }
 
 extension JSONValue: Identifiable { var id: String { self["id"].string.isEmpty ? self["period"].string : self["id"].string } }

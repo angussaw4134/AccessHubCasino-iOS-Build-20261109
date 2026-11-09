@@ -3,6 +3,11 @@ import Security
 @testable import AccessHubCasino
 
 final class ClientContractTests: XCTestCase {
+    func testHubURLComponentsPreserveRoomIdentityAndEscapeDelimiters() {
+        XCTAssertEqual(HubStore.escape("snk_0123456789abcdef0123456789abcdef"),"snk_0123456789abcdef0123456789abcdef")
+        XCTAssertEqual(HubStore.escape("ticket:user/request?next=1&other=2"),"ticket%3Auser%2Frequest%3Fnext%3D1%26other%3D2")
+        XCTAssertEqual(HubStore.escape("a-b.c~d"),"a-b.c~d")
+    }
     func testRealtimeUsesJSONTextFramesForCloudflareRooms() throws {
         let payload: [String:JSONValue] = ["type":.string("ready"),"id":.string("stable-room-command"),"acceptedStakeUnits":.number(100_000_000),"termsHash":.string("authoritative-terms")]
         switch try RealtimeWire.message(payload) {
