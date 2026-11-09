@@ -205,7 +205,7 @@ struct ProfileView: View {
             .sheet(isPresented:$login) { AccountView(register:false) }
             .sheet(isPresented:$support) { HubDestinationSheet(destination:.support) }
             .alert("Sign out?",isPresented:$confirmLogout) { Button("Cancel",role:.cancel) {}; Button("Sign out",role:.destructive) { Task { await store.endSession() } } } message: { Text(store.state["user"]["isGuest"].bool ? "This is a guest account. Save your progress with a username and password first if you want to return to it." : "Your progress will be available when you sign in again.") }
-            .alert("Delete your account?",isPresented:$confirmDelete) { Button("Cancel",role:.cancel) {}; Button("Delete permanently",role:.destructive) { Task { await store.endSession(delete:true) } } } message: { Text("This permanently removes your account, saved progress, credits and history. This cannot be undone.") }
+            .alert("Delete your account?",isPresented:$confirmDelete) { Button("Cancel",role:.cancel) {}; Button("Delete permanently",role:.destructive) { Task { await store.endSession(delete:true) } } } message: { Text("This permanently removes account access, saved progress and balances. Public community posts are anonymized; transaction and giveaway audit records are retained. This cannot be undone.") }
     }
     private func settingToggle(_ title: String,key: String) -> some View {
         Toggle(title,isOn:Binding(get:{ store.state["settings"][key].bool },set:{ value in Task { await store.setting(key,value:.bool(value)) } })).font(.subheadline).disabled(!store.canAct)

@@ -62,7 +62,12 @@ struct HubFeatureArt: View {
         GeometryReader { geometry in
             ZStack {
                 LinearGradient(colors:[AH.emerald.opacity(0.18),AH.raised,AH.background],startPoint:.topLeading,endPoint:.bottomTrailing)
-                if UIImage(named:name) != nil {
+                if let url = URL(string:name), url.scheme == "https", url.host != nil {
+                    AsyncImage(url:url) { phase in
+                        if let image = phase.image { image.resizable().scaledToFill().frame(width:geometry.size.width,height:geometry.size.height).clipped() }
+                        else { Image("CollectionArt").resizable().scaledToFill().frame(width:geometry.size.width,height:geometry.size.height).clipped() }
+                    }
+                } else if UIImage(named:name) != nil {
                     Image(name).resizable().scaledToFill().frame(width:geometry.size.width,height:geometry.size.height).clipped()
                 } else {
                     Canvas { context,size in
@@ -99,11 +104,15 @@ struct HubHomeView: View {
     @EnvironmentObject var store: CasinoStore
     @EnvironmentObject var hub: HubStore
     private var daily: JSONValue { hub.bootstrap["daily"] }
+    private var featured: [String] {
+        let configured = hub.bootstrap["config"]["featuredGames"]
+        return configured.exists ? configured.array.map(\.string).filter { ["snake","casino","crash","blackjack","mines","slots"].contains($0) } : ["snake","casino"]
+    }
     var body: some View {
         HubPage(title:"Your place to play.",subtitle:"Games, people and a collection that's yours.") {
             HubStatus()
             ForEach(Array(hub.bootstrap["config"]["banners"].array.enumerated()),id:\.offset) { _,banner in
-                Panel { VStack(alignment:.leading,spacing:8) { Text(banner["title"].string).font(.headline); Text(banner["body"].string).font(.subheadline).foregroundStyle(AH.muted) } }
+                HubBanner(banner:banner)
             }
             HStack(alignment:.top,spacing:12) {
                 Panel { VStack(alignment:.leading,spacing:8) { Text("HUB POINTS").font(.system(size:10,weight:.bold)).tracking(1.4).foregroundStyle(AH.muted); Text(hub.isAvailable ? "\(hub.points)" : "—").font(.system(size:30,weight:.semibold,design:.rounded)).lineLimit(1).minimumScaleFactor(0.5).contentTransition(.numericText()); Text("Community rewards").font(.caption2).foregroundStyle(AH.muted) } }
@@ -132,11 +141,18 @@ struct HubHomeView: View {
             ForEach(hub.bootstrap["recentNotifications"].array.prefix(3)) { notification in
                 Button { Task { await hub.openNotification(notification) } } label: { Panel { HStack { VStack(alignment:.leading,spacing:6) { Text(notification["title"].string).font(.headline); Text(notification["body"].string).font(.caption).foregroundStyle(AH.muted) }; Spacer(); Image(systemName:"arrow.up.right").foregroundStyle(AH.emerald) } } }.buttonStyle(.plain).disabled(!hub.canAct)
             }
-            SectionTitle(title:"Make your next move")
-            NavigationLink { SnakeLobbyView() } label: {
-                ZStack(alignment:.bottomLeading) { HubFeatureArt(name:"SnakeArt").frame(height:180); LinearGradient(colors:[.clear,AH.background.opacity(0.9)],startPoint:.top,endPoint:.bottom); VStack(alignment:.leading,spacing:6) { Text("SNAKE").font(.title2.bold()); Text("Solo rhythm. Live rivalries.").font(.subheadline).foregroundStyle(AH.muted) }.padding(20) }.clipShape(RoundedRectangle(cornerRadius:22))
-            }.buttonStyle(.plain).accessibilityIdentifier("homeSnakeShortcut")
-            NavigationLink { CasinoCollectionView() } label: { FeaturedGame(game:.blackjack) }.buttonStyle(.plain)
+            if !featured.isEmpty { SectionTitle(title:"Make your next move") }
+            ForEach(Array(featured.enumerated()),id:\.offset) { _,name in
+                if name == "snake" {
+                    NavigationLink { SnakeLobbyView() } label: {
+                        ZStack(alignment:.bottomLeading) { HubFeatureArt(name:"SnakeArt").frame(height:180); LinearGradient(colors:[.clear,AH.background.opacity(0.9)],startPoint:.top,endPoint:.bottom); VStack(alignment:.leading,spacing:6) { Text("SNAKE").font(.title2.bold()); Text("Solo rhythm. Live rivalries.").font(.subheadline).foregroundStyle(AH.muted) }.padding(20) }.clipShape(RoundedRectangle(cornerRadius:22))
+                    }.buttonStyle(.plain).accessibilityIdentifier("homeSnakeShortcut")
+                } else if name == "casino" {
+                    HubLinkCard(title:"AccessHub Casino",detail:"Crash, Blackjack, Mines and Slots",symbol:"suit.spade") { CasinoCollectionView() }
+                } else if let game = CasinoGame(rawValue:name) {
+                    NavigationLink { GameScreen(game:game) } label: { FeaturedGame(game:game) }.buttonStyle(.plain)
+                }
+            }
             if let giveaway = hub.bootstrap["giveaways"].array.first {
                 HubLinkCard(title:giveaway["title"].string,detail:"Free entry · closes \(readableDate(giveaway["closesAt"]))",symbol:"gift") { GiveawaysView() }
             }
@@ -146,6 +162,28 @@ struct HubHomeView: View {
             SectionTitle(title:"Your recent casino rounds")
             HistoryList(items:Array(store.state["history"].array.prefix(3)))
         }.toolbar(.hidden,for:.navigationBar)
+    }
+}
+
+struct HubBanner: View {
+    @EnvironmentObject var hub: HubStore
+    let banner: JSONValue
+    private var target: HubDestination? { HubDestination.content(banner["route"]) }
+    var body: some View {
+        Group {
+            if let target { Button { hub.destination = target } label: { card }.buttonStyle(.plain).accessibilityHint("Opens the featured content") }
+            else { card }
+        }
+    }
+    private var card: some View {
+        VStack(alignment:.leading,spacing:0) {
+            if !banner["art"].string.isEmpty { HubFeatureArt(name:banner["art"].string).frame(height:150) }
+            HStack(alignment:.top,spacing:12) {
+                VStack(alignment:.leading,spacing:8) { Text(banner["title"].string).font(.headline); Text(banner["body"].string).font(.subheadline).foregroundStyle(AH.muted).fixedSize(horizontal:false,vertical:true) }
+                Spacer(minLength:0)
+                if target != nil { Image(systemName:"arrow.up.right").foregroundStyle(AH.emerald) }
+            }.padding(18)
+        }.background(AH.panel,in:RoundedRectangle(cornerRadius:22)).clipShape(RoundedRectangle(cornerRadius:22))
     }
 }
 

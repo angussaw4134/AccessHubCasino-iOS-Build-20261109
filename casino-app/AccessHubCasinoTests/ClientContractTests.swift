@@ -3,6 +3,13 @@ import Security
 @testable import AccessHubCasino
 
 final class ClientContractTests: XCTestCase {
+    func testConfiguredContentRoutesUseKnownDestinationsOnly() {
+        XCTAssertEqual(HubDestination.content(.object(["screen":.string("snake")])),.snakeLobby)
+        XCTAssertEqual(HubDestination.content(.object(["screen":.string("inventory")])),.inventory)
+        XCTAssertEqual(HubDestination.content(.object(["screen":.string("marketplace")])),.marketplaceBrowse)
+        XCTAssertEqual(HubDestination.content(.object(["screen":.string("blackjack")])),.game("blackjack"))
+        XCTAssertNil(HubDestination.content(.object(["screen":.string("https://untrusted.example")])))
+    }
     func testHubURLComponentsPreserveRoomIdentityAndEscapeDelimiters() {
         XCTAssertEqual(HubStore.escape("snk_0123456789abcdef0123456789abcdef"),"snk_0123456789abcdef0123456789abcdef")
         XCTAssertEqual(HubStore.escape("ticket:user/request?next=1&other=2"),"ticket%3Auser%2Frequest%3Fnext%3D1%26other%3D2")

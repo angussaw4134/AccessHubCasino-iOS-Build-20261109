@@ -1,15 +1,19 @@
-# AccessHub Casino for iPhone
+# AccessHub for iPhone
 
-Native SwiftUI application, iOS 17+, Xcode 16 or newer, no third-party runtime dependencies. All stakes, results, balances, account settings, progress and rakeback are resolved by the Cloudflare backend. All amounts are **Access Hub Credits**, which cannot be purchased, transferred or redeemed.
+Native SwiftUI application, iOS 17+, Xcode 16 or newer, no third-party runtime dependencies. AccessHub 2.0 (build 3) contains Home, Play, Rewards, Community and Profile. The preserved AccessHub Casino section includes Crash, Blackjack, Mines, Slots and rakeback. Shared accounts, daily rewards, giveaways, voucher inventory, Hub Point marketplace, live chat, friends, authoritative Snake rooms, support and the notification inbox use the Cloudflare backend.
 
-Build 2 starts new accounts at 0. Only an administrator can add credits; players have no refill or credit-purchase control. Profile displays a copyable account ID for the administrator. Game returns and earned rakeback claims continue to work normally. The interface uses “Access Hub Credits” without a “No cash value” label; the currency remains non-transferable and cannot be redeemed.
+New accounts start at 0 **Access Hub Credits**. Only an administrator can add credits; players have no refill or credit-purchase control. Profile displays a copyable account ID. Game returns and earned rakeback claims continue to work normally. Credits cannot be purchased, transferred or redeemed. **Hub Points** are a separate balance earned through free community rewards, with no conversion from casino credits or results.
+
+The existing `app.accesshub.casino` bundle identifier, `AccessHubCasino` internal target, Keychain service and casino request/history formats are preserved. Keep the bundle identifier and signing identity consistent when upgrading an installed account. The delivered loader build uses the in-app inbox; APNs is deliberately disabled, as requested. Owner-signed APNs source/configuration is retained for a future separately tested distribution.
+
+Current acceptance uses the `hub_tests` workflow input: fresh zero-credit guests on the staging backend, daily claim, genuine chat connection, a completed authoritative solo Snake round, navigation and disabled zero-balance casino stakes. Device IPA configuration remains the production backend. No funded fixture credentials are needed or exported for this run. See the final release evidence for the actual result; historical build-1/build-2 runs below do not establish build-3 acceptance.
 
 ## Open and run
 
 1. Copy this project to a Mac with Xcode and open `AccessHubCasino.xcodeproj`.
 2. Set `ACCESSHUB_API_BASE_URL` in `Config.xcconfig` to your deployed backend. Keep the `https:/$()/` escaping: Xcode expands it to `https://`.
 3. Select the `AccessHubCasino` scheme and an iPhone simulator. Build and Run.
-4. For a real device, select your Apple development team under Signing & Capabilities and choose a unique bundle identifier if needed.
+4. For a real device, select your Apple development team under Signing & Capabilities. Preserve the bundle identifier when upgrading an existing installation; a different identifier creates a separate app and Keychain context.
 
 The included artwork and audio are already in the app bundle. To regenerate the project after adding files, run `python3 scripts/generate_project.py`. To re-import the source artwork, run `python3 scripts/import_artwork.py`. Neither step is required to open the supplied project.
 
@@ -79,7 +83,7 @@ The validator prepends `ios/.python-tools` to Python's module search path itself
 - Account deletion requires explicit confirmation. Cosmetic selections independently apply to avatars, profile decorations, Blackjack tables and card backs. Halo and Laurel decorations are original native vector artwork and appear around the selected avatar on Home, Progress and Profile. Learning XP does not affect game probabilities or the fixed 1% rakeback rate.
 - Positive net results receive a restrained glow, with 6, 12 or 18 small particles for returns of at least 1.25×, 2× or 5× the committed stake. Reduced Motion uses only the glow/crossfade. A returned amount below the stake is never celebrated. Settled round IDs are remembered per account so navigating or reconnecting does not replay result effects. Six original sounds include distinct win, push and low loss feedback; Slots outcome feedback waits until its reels stop.
 
-## Delivery verification boundary
+## Historical casino verification (builds 1 and 2)
 
 The native Release arm64 iPhone target compiled and was packaged into an unsigned IPA on macOS using Xcode 16.4 and the iOS 18.5 SDK. [Build run 42524613350](https://github.com/angussaw4134/AccessHubCasino-iOS-Build-20261109/actions/runs/42524613350) passed on commit `6245d200299200dffccdc9d0a3c778286ad17514`. Seven client contract tests and the welcome/account-form UI test passed on each of iPhone SE (3rd generation) and iPhone 16 Pro Max simulators. The two connected tests were intentionally skipped in that offline run. Both welcome screenshots were inspected: artwork, text and controls render correctly; the small layout scrolls to reach its legal footer. The machine-readable record is `../reports/ios-runs/42524613350/summary.json`.
 

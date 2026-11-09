@@ -3,18 +3,30 @@ import PhotosUI
 import UserNotifications
 
 struct CommunityView: View {
+    @EnvironmentObject var hub: HubStore
     var body: some View {
         HubPage(title:"A good place to meet.",subtitle:"Real conversations. Shared games. A community you shape.") {
-            HubLinkCard(title:"Global lounge",detail:"Join the conversation",symbol:"bubble.left.and.bubble.right") { ChatRoomView(channel:"global") }.accessibilityIdentifier("globalChatShortcut")
-            HubLinkCard(title:"Announcements",detail:"Updates from the AccessHub team",symbol:"megaphone") { ChatRoomView(channel:"announcements") }
-            HubLinkCard(title:"Snake club",detail:"Find opponents and talk tactics",symbol:"gamecontroller") { ChatRoomView(channel:"snake") }
+            channelCard("global",title:"Global lounge",detail:"Join the conversation",symbol:"bubble.left.and.bubble.right").accessibilityIdentifier("globalChatShortcut")
+            channelCard("announcements",title:"Announcements",detail:"Updates from the AccessHub team",symbol:"megaphone")
+            channelCard("snake",title:"Snake club",detail:"Find opponents and talk tactics",symbol:"gamecontroller")
             HubLinkCard(title:"Friends & invitations",detail:"Your people, one tap away",symbol:"person.2") { FriendsView() }
             Panel { VStack(alignment:.leading,spacing:12) {
                 Text("Make room for everyone.").font(.headline)
                 Text("Keep conversations respectful. Never post passwords, private voucher codes or account details. Block unwanted contact and report messages for staff review.").font(.subheadline).foregroundStyle(AH.muted)
                 HubLearningButton(milestone:"community-rules",title:"I've read the community rules")
             } }
-        }.toolbar(.hidden,for:.navigationBar)
+        }.toolbar(.hidden,for:.navigationBar).task {
+            while !Task.isCancelled {
+                await hub.refreshChannels()
+                do { try await Task.sleep(for:.seconds(20)) } catch { return }
+            }
+        }
+    }
+    private func channelCard(_ channel: String,title: String,detail: String,symbol: String) -> some View {
+        let summary = hub.channelSummaries[channel]
+        let count = summary?["unread"].int ?? 0
+        let suffix = summary == nil ? (hub.errors["channel-"+channel] == nil ? "Checking unread messages…" : "Unread count unavailable") : count == 0 ? "All caught up" : "\(count)\(summary?["unreadCapped"].bool == true ? "+" : "") unread"
+        return HubLinkCard(title:title,detail:detail + " · " + suffix,symbol:count > 0 ? "bubble.left.and.bubble.right.fill" : symbol) { ChatRoomView(channel:channel) }
     }
 }
 
@@ -152,7 +164,8 @@ struct SupportTicketView: View {
             if ticket.exists && ticket["status"].string != "resolved" {
                 TextEditor(text:$message).frame(height:110).scrollContentBackground(.hidden).padding(12).background(AH.panel,in:RoundedRectangle(cornerRadius:16)).accessibilityLabel("Reply")
                 Button("Send reply") { Task { if await hub.action("support.reply",["ticketId":.string(ticketID),"body":.string(message)]) { message = ""; await load() } } }.buttonStyle(PrimaryButton()).disabled(!hub.canAct || message.trimmingCharacters(in:.whitespacesAndNewlines).isEmpty || message.count > 4000)
-                PhotosPicker(selection:$photo,matching:.images) { Label(uploading ? "Uploading screenshot…" : "Attach screenshot",systemImage:"paperclip") }.font(.subheadline).disabled(uploading || !hub.canAct)
+                PhotosPicker(selection:$photo,matching:.images) { Label(uploading ? "Uploading screenshot…" : "Attach screenshot",systemImage:"paperclip") }.font(.subheadline).disabled(uploading || !hub.canAct || ticket["attachmentsAvailable"] == .bool(false))
+                if ticket["attachmentsAvailable"] == .bool(false) { Text("Screenshot attachments are temporarily unavailable. You can still send a private message.").font(.caption).foregroundStyle(AH.gold) }
                 if let photo,!uploading { Button("Retry saved attachment") { Task { await upload(photo) } }.font(.caption).disabled(!hub.canAct) }
                 Text("Images only, up to 5 MB. Attachments require account authorization to view.").font(.caption2).foregroundStyle(AH.muted)
                 Button("Mark resolved") { Task { if await hub.action("support.resolve",["ticketId":.string(ticketID)]) { await load() } } }.font(.caption).disabled(!hub.canAct)

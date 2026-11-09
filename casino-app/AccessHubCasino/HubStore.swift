@@ -14,7 +14,8 @@ struct HubCommand: Codable, Equatable {
 
 enum HubDestination: Hashable, Identifiable {
     case home, profile, daily, giveaways, vouchers, inventory, marketplace, points, friends, support, notifications, preferences, progress
-    case ticket(String), snake(String), voucher(String)
+    case ticket(String), snake(String), voucher(String), game(String)
+    case snakeLobby, casino, marketplaceBrowse
     var id: String { String(describing:self) }
     static func notification(_ value: JSONValue) -> HubDestination? {
         let type = value["screen"].string
@@ -33,6 +34,16 @@ enum HubDestination: Hashable, Identifiable {
         default: return nil
         }
     }
+    static func content(_ value: JSONValue) -> HubDestination? {
+        switch value["screen"].string {
+        case "snake" where value["id"].string.isEmpty: return .snakeLobby
+        case "casino": return .casino
+        case "crash", "blackjack", "mines", "slots": return .game(value["screen"].string)
+        case "inventory": return .inventory
+        case "marketplace": return .marketplaceBrowse
+        default: return notification(value)
+        }
+    }
 }
 
 @MainActor final class HubStore: ObservableObject {
@@ -48,6 +59,7 @@ enum HubDestination: Hashable, Identifiable {
     @Published var lastResult: JSONValue = .null
     @Published var learning: JSONValue = .null
     @Published var hubLevelUp: Int?
+    @Published var channelSummaries: [String:JSONValue] = [:]
     @Published private(set) var ownerID = ""
     private weak var casino: CasinoStore?
     private var refreshTask: Task<Void,Never>?
@@ -72,7 +84,7 @@ enum HubDestination: Hashable, Identifiable {
         casino = store
         if nextOwner != ownerID {
             ownerID = nextOwner; bootstrap = .null; collections = [:]; loading = []; errors = [:]
-            error = nil; notice = nil; destination = nil; lastResult = .null; pending = nil; learning = .null; hubLevelUp = nil
+            error = nil; notice = nil; destination = nil; lastResult = .null; pending = nil; learning = .null; hubLevelUp = nil; channelSummaries = [:]
         }
         guard !ownerID.isEmpty else { store.hubHasPending = false; return }
         if let data = UserDefaults.standard.data(forKey:Self.storageKey(owner:ownerID)) {
@@ -95,6 +107,20 @@ enum HubDestination: Hashable, Identifiable {
     }
     func suspend() { refreshTask?.cancel(); refreshTask = nil; generation += 1; loading = []; busy = false }
     func resume() async { if let casino { await attach(casino) } }
+    func refreshChannels() async {
+        guard !ownerID.isEmpty, !loading.contains("channels") else { return }
+        let stamp = generation
+        loading.insert("channels")
+        defer { if stamp == generation { loading.remove("channels") } }
+        for channel in ["global","announcements","snake"] {
+            do {
+                let result = try await fetch("/v2/chat/" + channel + "/messages?limit=1")
+                guard stamp == generation, !Task.isCancelled else { return }
+                channelSummaries[channel] = result; errors.removeValue(forKey:"channel-" + channel)
+            } catch is CancellationError { return }
+            catch { if stamp == generation { channelSummaries.removeValue(forKey:channel); errors["channel-" + channel] = error.localizedDescription } }
+        }
+    }
     func fetch(_ path: String) async throws -> JSONValue {
         guard let casino, casino.state["user"]["id"].string == ownerID else { throw CancellationError() }
         let stamp = generation
