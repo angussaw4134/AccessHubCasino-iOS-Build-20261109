@@ -38,6 +38,7 @@ final class ClientContractTests: XCTestCase {
         XCTAssertEqual(HubDestination.notification(.object(["screen":.string("support"),"id":.string("private-ticket")])),.ticket("private-ticket"))
         XCTAssertEqual(HubDestination.notification(.object(["screen":.string("vouchers"),"id":.string("voucher-1")])),.voucher("voucher-1"))
         XCTAssertEqual(HubDestination.notification(.object(["screen":.string("snake"),"id":.string("room-1")])),.snake("room-1"))
+        XCTAssertEqual(HubDestination.notification(.object(["screen":.string("slots")])),.game("slots"))
         XCTAssertNil(HubDestination.notification(.object(["screen":.string("snake")])))
         XCTAssertNil(HubDestination.notification(.object(["screen":.string("https://untrusted.example"),"id":.string("anything")])))
     }

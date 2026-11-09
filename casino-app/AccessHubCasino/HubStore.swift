@@ -28,6 +28,9 @@ enum HubDestination: Hashable, Identifiable {
         case "giveaway", "giveaways": return .giveaways
         case "marketplace", "sale": return .marketplace
         case "daily": return .daily
+        case "inventory": return .inventory
+        case "casino": return .casino
+        case "crash", "blackjack", "mines", "slots": return .game(type)
         case "notifications": return .notifications
         case "home": return .home
         case "profile": return .profile
