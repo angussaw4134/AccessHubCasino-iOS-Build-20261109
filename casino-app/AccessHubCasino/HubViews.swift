@@ -39,6 +39,7 @@ struct HubPage<Content: View>: View {
     @EnvironmentObject var hub: HubStore
     let title: String
     var subtitle: String? = nil
+    var refreshKey: String? = nil
     @ViewBuilder var content: Content
     var body: some View {
         ScrollView { VStack(alignment:.leading,spacing:22) {
@@ -51,7 +52,7 @@ struct HubPage<Content: View>: View {
             content
         }.padding(20).frame(maxWidth:760) .frame(maxWidth:.infinity) }
         .pageBackground().navigationBarTitleDisplayMode(.inline)
-        .refreshable { await hub.refresh() }
+        .refreshable { await hub.refresh(force:true); if let refreshKey { await hub.reload(refreshKey) } }
     }
 }
 
@@ -105,7 +106,7 @@ struct HubHomeView: View {
                 Panel { VStack(alignment:.leading,spacing:8) { Text(banner["title"].string).font(.headline); Text(banner["body"].string).font(.subheadline).foregroundStyle(AH.muted) } }
             }
             HStack(alignment:.top,spacing:12) {
-                Panel { VStack(alignment:.leading,spacing:8) { Text("HUB POINTS").font(.system(size:10,weight:.bold)).tracking(1.4).foregroundStyle(AH.muted); Text(hub.isAvailable ? "\(hub.points)" : "—").font(.system(size:30,weight:.semibold,design:.rounded)).contentTransition(.numericText()); Text("Community rewards").font(.caption2).foregroundStyle(AH.muted) } }
+                Panel { VStack(alignment:.leading,spacing:8) { Text("HUB POINTS").font(.system(size:10,weight:.bold)).tracking(1.4).foregroundStyle(AH.muted); Text(hub.isAvailable ? "\(hub.points)" : "—").font(.system(size:30,weight:.semibold,design:.rounded)).lineLimit(1).minimumScaleFactor(0.5).contentTransition(.numericText()); Text("Community rewards").font(.caption2).foregroundStyle(AH.muted) } }
                 Panel { CreditBalance(units:store.balance).padding(.vertical,6) }
             }
             if daily.exists {
@@ -125,8 +126,11 @@ struct HubHomeView: View {
                 if !invitation["roomId"].string.isEmpty {
                     HubLinkCard(title:"A friend wants to play",detail:invitation["message"].string.isEmpty ? "Open your Snake invitation" : invitation["message"].string,symbol:"gamecontroller") { SnakeRoomView(roomID:invitation["roomId"].string) }
                 } else if invitation["direction"].string == "incoming" {
-                    HubLinkCard(title:"\(invitation["displayName"].string) sent a friend request",detail:"Review your invitations",symbol:"person.badge.plus") { FriendsView() }
+                    HubLinkCard(title:"\(invitation["displayName"].string) sent a friend request",detail:"Review your invitations",symbol:"person.badge.plus") { FriendsView(initialFilter:"requests") }
                 }
+            }
+            ForEach(hub.bootstrap["recentNotifications"].array.prefix(3)) { notification in
+                Button { Task { await hub.openNotification(notification) } } label: { Panel { HStack { VStack(alignment:.leading,spacing:6) { Text(notification["title"].string).font(.headline); Text(notification["body"].string).font(.caption).foregroundStyle(AH.muted) }; Spacer(); Image(systemName:"arrow.up.right").foregroundStyle(AH.emerald) } } }.buttonStyle(.plain).disabled(!hub.canAct)
             }
             SectionTitle(title:"Make your next move")
             NavigationLink { SnakeLobbyView() } label: {
@@ -171,7 +175,7 @@ struct RewardsView: View {
     var body: some View {
         HubPage(title:"Good things, collected.",subtitle:"Free community rewards, separate from casino credits and game results.") {
             HubStatus()
-            Panel { HStack { VStack(alignment:.leading,spacing:8) { Text("HUB POINTS").font(.caption.bold()).tracking(1.5).foregroundStyle(AH.muted); Text(hub.isAvailable ? "\(hub.points)" : "—").font(.system(size:40,weight:.semibold,design:.rounded)); Text("Earned from free rewards and community learning.").font(.caption).foregroundStyle(AH.muted) }; Spacer(); GemArt().frame(width:48,height:60) } }
+            Panel { HStack { VStack(alignment:.leading,spacing:8) { Text("HUB POINTS").font(.caption.bold()).tracking(1.5).foregroundStyle(AH.muted); Text(hub.isAvailable ? "\(hub.points)" : "—").font(.system(size:40,weight:.semibold,design:.rounded)); Text("Earned from free community rewards.").font(.caption).foregroundStyle(AH.muted) }; Spacer(); GemArt().frame(width:48,height:60) } }
             HubLinkCard(title:"Daily reward",detail:hub.bootstrap["daily"]["claimed"].bool ? "Claimed today · preview the schedule" : "See today's available reward",symbol:"sun.max") { DailyRewardView() }.accessibilityIdentifier("dailyRewardShortcut")
             HubLinkCard(title:"Weekly giveaways",detail:"Free entries and actual configured prizes",symbol:"gift") { GiveawaysView() }
             HubLinkCard(title:"Voucher wallet",detail:"Free drops and your available benefits",symbol:"ticket") { VoucherWalletView() }
@@ -189,7 +193,7 @@ struct DailyRewardView: View {
     @State private var revealed = false
     private var daily: JSONValue { hub.collections["daily"] ?? hub.bootstrap["daily"] }
     var body: some View {
-        HubPage(title:"A little something, daily.",subtitle:"No streak to protect. Come back whenever it suits you.") {
+        HubPage(title:"A little something, daily.",subtitle:"No streak to protect. Come back whenever it suits you.",refreshKey:"daily") {
             HubStatus(key:"daily")
             Panel { VStack(alignment:.leading,spacing:18) {
                 HubFeatureArt(name:"RewardsArt").frame(height:190).clipShape(RoundedRectangle(cornerRadius:16)).scaleEffect(revealed && !store.reducedMotion ? 1.02 : 1)
@@ -213,7 +217,7 @@ struct DailyRewardView: View {
 struct GiveawaysView: View {
     @EnvironmentObject var hub: HubStore
     var body: some View {
-        HubPage(title:"Something worth sharing.",subtitle:"Entry is free. Casino play, stakes and balances never affect eligibility.") {
+        HubPage(title:"Something worth sharing.",subtitle:"Entry is free. Casino play, stakes and balances never affect eligibility.",refreshKey:"giveaways") {
             HubStatus(key:"giveaways")
             if hub.items("giveaways").isEmpty && !hub.loading.contains("giveaways") { EmptyState(title:"No giveaway is open.",detail:"Configured promotions and previous results will appear here.") }
             ForEach(hub.items("giveaways")) { item in
@@ -253,7 +257,7 @@ struct CosmeticPreview: View {
             if let url = URL(string:item["art"].string), url.scheme == "https" {
                 AsyncImage(url:url) { image in image.resizable().scaledToFit() } placeholder: { ProgressView() }.padding(14)
             } else if UIImage(named:item["art"].string) != nil { Image(item["art"].string).resizable().scaledToFit().padding(14) }
-            else { CosmeticMotif(kind:item["kind"].string,art:item["art"].string).padding(20) }
+            else { CosmeticMotif(kind:item["kind"].string,art:item["art"].string,color:item["color"].string).padding(20) }
         }.accessibilityLabel(item["name"].string + " preview")
     }
 }
@@ -261,22 +265,27 @@ struct CosmeticPreview: View {
 struct CosmeticMotif: View {
     var kind: String
     var art: String
+    var color = "#00D5A0"
     var body: some View {
         GeometryReader { geo in
             ZStack {
                 let side = min(geo.size.width,geo.size.height)
                 if kind == "cardBack" {
-                    PlayingCard(card:.null,back:"hub|#007E62|"+art).frame(width:side*0.65,height:side)
+                    PlayingCard(card:.null,back:"hub|"+color+"|"+art).frame(width:side*0.65,height:side)
+                } else if kind == "tableTheme" {
+                    RoundedRectangle(cornerRadius:22).fill(Color.hubHex(color).opacity(0.7)).overlay(RoundedRectangle(cornerRadius:22).strokeBorder(AH.gold.opacity(0.4)))
+                    if UIImage(named:"TableTexture") != nil { Image("TableTexture").resizable(resizingMode:.tile).opacity(0.2).clipShape(RoundedRectangle(cornerRadius:22)) }
+                    HStack(spacing:-12) { PlayingCard(card:.object(["rank":.string("A"),"suit":.string("spades")])); PlayingCard(card:.null,back:"circuit") }.frame(width:side*0.8,height:side*0.75).rotationEffect(.degrees(-8))
                 } else if kind == "snakeSkin" || kind == "snakeTrail" {
                     Canvas { context,size in
                         for index in 0..<9 {
                             let x = size.width*0.15+CGFloat(index)*size.width*0.08
                             let y = size.height*0.5+sin(Double(index)*0.8)*size.height*0.2
-                            context.fill(Path(roundedRect:CGRect(x:x,y:y,width:18,height:18),cornerRadius:7),with:.color(AH.emerald.opacity(0.5+Double(index)*0.055)))
+                            context.fill(Path(roundedRect:CGRect(x:x,y:y,width:18,height:18),cornerRadius:7),with:.color(Color.hubHex(color).opacity(0.5+Double(index)*0.055)))
                         }
                     }
                 } else if kind == "avatarFrame" || kind == "profileTheme" {
-                    Circle().stroke(AngularGradient(colors:[AH.emerald,AH.gold,AH.emerald],center:.center),lineWidth:4).frame(width:side*0.8,height:side*0.8)
+                    Circle().stroke(AngularGradient(colors:[Color.hubHex(color),AH.gold,Color.hubHex(color)],center:.center),lineWidth:4).frame(width:side*0.8,height:side*0.8)
                     Brand(compact:true).scaleEffect(1.3)
                 } else { GemArt().frame(width:side*0.55,height:side*0.75).shadow(color:AH.emerald.opacity(0.2),radius:14) }
             }.frame(maxWidth:.infinity,maxHeight:.infinity)
@@ -286,17 +295,24 @@ struct CosmeticMotif: View {
 
 struct HubAvatarView: View {
     @EnvironmentObject var hub: HubStore
+    var body: some View { PublicHubAvatar(name:hub.profile["avatar"].string,frameColor:hub.equipped("avatarFrame")["color"].string).accessibilityLabel(hub.profile["displayName"].string + " profile") }
+}
+
+struct PublicHubAvatar: View {
+    let name: String
+    var frameColor = ""
     var body: some View {
         GeometryReader { geometry in
             ZStack {
                 Circle().fill(AH.emerald.opacity(0.10))
-                if hub.profile["avatar"].string == "serpent" { CosmeticMotif(kind:"snakeSkin",art:"jade-snake").padding(geometry.size.width*0.12) }
-                else if ["emerald","jade","diamond"].contains(hub.profile["avatar"].string) { GemArt().padding(geometry.size.width*0.25) }
-                else if hub.profile["avatar"].string == "orbit" { Circle().stroke(AH.emerald,lineWidth:1).padding(geometry.size.width*0.2); Ellipse().stroke(AH.gold,lineWidth:1).rotationEffect(.degrees(-35)).padding(geometry.size.width*0.13) }
+                if name == "serpent" { CosmeticMotif(kind:"snakeSkin",art:"jade-snake").padding(geometry.size.width*0.12) }
+                else if ["emerald","jade","diamond","gem"].contains(name) { GemArt().colorMultiply(name == "diamond" ? Color(red:0.7,green:0.85,blue:1) : name == "jade" ? Color(red:0.8,green:1,blue:0.8) : .white).padding(geometry.size.width*0.25) }
+                else if name == "orbit" { Circle().stroke(AH.emerald,lineWidth:1).padding(geometry.size.width*0.2); Ellipse().stroke(AH.gold,lineWidth:1).rotationEffect(.degrees(-35)).padding(geometry.size.width*0.13) }
+                else if name == "comet" { Capsule().fill(LinearGradient(colors:[.clear,AH.gold],startPoint:.leading,endPoint:.trailing)).frame(width:geometry.size.width*0.6,height:geometry.size.width*0.14).rotationEffect(.degrees(-35)); Circle().fill(AH.gold).frame(width:geometry.size.width*0.23,height:geometry.size.width*0.23).offset(x:geometry.size.width*0.16,y:-geometry.size.width*0.1) }
                 else { Brand(compact:true).scaleEffect(geometry.size.width/48) }
-                if hub.equipped("avatarFrame").exists { Circle().stroke(AngularGradient(colors:[Color.hubHex(hub.equipped("avatarFrame")["color"].string),AH.gold,AH.emerald],center:.center),lineWidth:2.5).padding(1) }
+                if !frameColor.isEmpty { Circle().stroke(AngularGradient(colors:[Color.hubHex(frameColor),AH.gold,AH.emerald],center:.center),lineWidth:2.5).padding(1) }
             }
-        }.accessibilityLabel(hub.profile["displayName"].string + " profile")
+        }.clipShape(Circle()).accessibilityHidden(true)
     }
 }
 
@@ -340,7 +356,7 @@ struct VoucherWalletView: View {
     @State private var selectedVoucher: JSONValue = .null
     var selectedID: String? = nil
     var body: some View {
-        HubPage(title:"Your voucher wallet.",subtitle:"Real benefits, allocated once. Free drops never require credits or points.") {
+        HubPage(title:"Your voucher wallet.",subtitle:"Real benefits, allocated once. Free drops never require credits or points.",refreshKey:"vouchers") {
             Panel { VStack(alignment:.leading,spacing:12) {
                 Text("Discover a free drop").font(.headline)
                 HubFeatureArt(name:"VoucherArt").frame(height:140).clipShape(RoundedRectangle(cornerRadius:14))
@@ -348,7 +364,7 @@ struct VoucherWalletView: View {
                 Text("The server selects from the currently stocked options below. Nothing is charged.").font(.caption).foregroundStyle(AH.muted)
                 ForEach(Array(drop["options"].array.enumerated()),id:\.offset) { _,option in Text("\(option["name"].string) · \(String(format:"%.1f",option["probability"].double*100))%").font(.caption) }
                 if !drop["available"].bool { Text(drop["unavailableReason"].string).font(.caption).foregroundStyle(AH.gold) }
-                Button("Reveal available drop") { Task { if await hub.action("voucher.reveal") { reveal = true; await hub.collection("vouchers",filter:filter); await loadDrop() } } }.buttonStyle(PrimaryButton()).disabled(!hub.canAct || !drop["available"].bool)
+                Button("Reveal available drop") { Task { if await hub.action("voucher.reveal") { reveal = true; await hub.collection("vouchers",filter:filter) }; await loadDrop() } }.buttonStyle(PrimaryButton()).disabled(!hub.canAct || !drop["available"].bool)
                 if reveal { Label("Your allocated benefit is in this wallet",systemImage:"checkmark.seal").foregroundStyle(AH.emerald).font(.caption) }
             } }
             Picker("Wallet",selection:$filter) { Text("Available").tag("available"); Text("Redeemed").tag("redeemed"); Text("Expired").tag("expired") }.pickerStyle(.segmented)
@@ -361,7 +377,7 @@ struct VoucherWalletView: View {
                     Text(item["instructions"].string).font(.caption).foregroundStyle(AH.muted)
                     if item["expiresAt"].exists { Text("Expires \(readableDate(item["expiresAt"]))").font(.caption).foregroundStyle(AH.gold) } else { Text("No expiry").font(.caption).foregroundStyle(AH.muted) }
                     if !item["code"].string.isEmpty { Text(item["code"].string).font(.system(.headline,design:.monospaced)).textSelection(.enabled).privacySensitive() }
-                    if item["status"].string == "available" { Button("Redeem benefit") { Task { if await hub.action("voucher.redeem",["voucherId":.string(item.id)]) { await hub.collection("vouchers",filter:filter) } } }.buttonStyle(PrimaryButton()).disabled(!hub.canAct) }
+                    if item["status"].string == "available" { Button("Redeem benefit") { Task { if await hub.action("voucher.redeem",["voucherId":.string(item.id)]) { selectedVoucher = .null; filter = "redeemed"; await hub.collection("vouchers",filter:filter) } } }.buttonStyle(PrimaryButton()).disabled(!hub.canAct) }
                     else { Text(item["status"].string.capitalized).font(.caption).foregroundStyle(AH.muted) }
                 } }
             }
@@ -377,7 +393,8 @@ struct InventoryView: View {
     @State private var selected: JSONValue?
     @State private var price = ""
     var body: some View {
-        HubPage(title:"Make it yours.",subtitle:"Cosmetics change your style. Game rules and probabilities stay the same.") {
+        HubPage(title:"Make it yours.",subtitle:"Cosmetics change your style. Game rules and probabilities stay the same.",refreshKey:"inventory") {
+            HubFeatureArt(name:"CollectionArt").frame(height:170).clipShape(RoundedRectangle(cornerRadius:20))
             HubStatus(key:"inventory")
             if hub.items("inventory").isEmpty { EmptyState(title:"Your collection starts here.",detail:"Free rewards and eligible marketplace purchases appear here. Casino level unlocks remain in your casino profile.") }
             ForEach(hub.items("inventory")) { item in
@@ -411,8 +428,9 @@ struct MarketplaceView: View {
     @State private var query = ""
     @State private var filter = "open"
     @State private var buying: JSONValue?
+    init(initialFilter: String = "open") { _filter = State(initialValue:initialFilter) }
     var body: some View {
-        HubPage(title:"The community collection.",subtitle:"\(hub.points) Hub Points available. Cosmetics only; no withdrawal or external resale.") {
+        HubPage(title:"The community collection.",subtitle:"\(hub.points) Hub Points available. Cosmetics only; no withdrawal or external resale.",refreshKey:"marketplace") {
             TextField("Search cosmetics",text:$query).fieldStyle().submitLabel(.search).onSubmit { Task { await hub.collection("marketplace",query:query,filter:filter) } }
             Picker("Listings",selection:$filter) { Text("Browse").tag("open"); Text("My listings").tag("mine"); Text("History").tag("history") }.pickerStyle(.segmented)
             HubStatus(key:"marketplace")
@@ -447,7 +465,7 @@ struct MarketplaceView: View {
 struct PointsHistoryView: View {
     @EnvironmentObject var hub: HubStore
     var body: some View {
-        HubPage(title:"Every point, accounted for.",subtitle:"Hub Points and Access Hub Credits have separate histories.") {
+        HubPage(title:"Every point, accounted for.",subtitle:"Hub Points and Access Hub Credits have separate histories.",refreshKey:"points/history") {
             HubStatus(key:"points/history")
             if hub.items("points/history").isEmpty { EmptyState(title:"A clean slate.",detail:"Your daily rewards and marketplace transactions will appear here.") }
             ForEach(hub.items("points/history")) { item in Panel { HStack(alignment:.top) { VStack(alignment:.leading,spacing:6) { Text(item["reason"].string).font(.headline); Text(readableDate(item["createdAt"])).font(.caption).foregroundStyle(AH.muted); Text(item["sourceId"].string).font(.caption2).foregroundStyle(AH.muted).textSelection(.enabled); Text("Balance after: \(item["balanceAfter"].int)").font(.caption) }; Spacer(); Text((item["delta"].int > 0 ? "+" : "") + item["delta"].string).font(.headline).foregroundStyle(item["delta"].int >= 0 ? AH.emerald : AH.text) } } }

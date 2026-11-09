@@ -33,15 +33,16 @@ struct FriendsView: View {
     @State private var query = ""
     @State private var filter = "friends"
     @State private var reporting: JSONValue?
+    init(initialFilter: String = "friends") { _filter = State(initialValue:initialFilter) }
     var body: some View {
-        HubPage(title:"Better with your people.",subtitle:"Find a member by username. Invitations follow their privacy settings.") {
+        HubPage(title:"Better with your people.",subtitle:"Find a member by username. Invitations follow their privacy settings.",refreshKey:"friends") {
             HStack { TextField("Search username",text:$query).textInputAutocapitalization(.never).autocorrectionDisabled().fieldStyle(); Button("Search") { Task { await hub.collection("friends",query:query) } }.font(.caption.bold()) }
             Picker("People",selection:$filter) { Text("Friends").tag("friends"); Text("Requests").tag("requests"); Text("Blocked").tag("blocked") }.pickerStyle(.segmented)
             HubStatus(key:"friends")
             if hub.items("friends").isEmpty { EmptyState(title:"Your people will appear here.",detail:"Search for a username or share yours from Profile.") }
             ForEach(hub.items("friends")) { person in
                 Panel { VStack(alignment:.leading,spacing:14) {
-                    HStack { Circle().fill(AH.emerald.opacity(0.12)).frame(width:42,height:42).overlay(Text(String(person["displayName"].string.prefix(1))).font(.headline)); VStack(alignment:.leading,spacing:4) { Text(person["displayName"].string).font(.headline); Text("@" + person["username"].string).font(.caption).foregroundStyle(AH.muted) }; Spacer(); if person["online"].bool { Text("Online").font(.caption2).foregroundStyle(AH.emerald) } }
+                    HStack { PublicHubAvatar(name:person["avatar"].string).frame(width:42,height:42); VStack(alignment:.leading,spacing:4) { Text(person["displayName"].string).font(.headline); Text("@" + person["username"].string).font(.caption).foregroundStyle(AH.muted) }; Spacer(); if person["online"].bool { Text("Online").font(.caption2).foregroundStyle(AH.emerald) } }
                     if person["relationship"].string == "friend" {
                         NavigationLink { SnakeLobbyView(inviteeID:person.id) } label: { Label("Invite to Snake",systemImage:"gamecontroller") }.font(.subheadline)
                         Button("Remove friend") { run("friend.remove",["userId":.string(person.id)]) }.font(.caption).foregroundStyle(AH.muted)
@@ -89,7 +90,7 @@ struct HubSupportView: View {
     @State private var search = ""
     @State private var creating = false
     var body: some View {
-        HubPage(title:"We're here to help.",subtitle:"Your tickets and attachments are private to you and authorized support staff.") {
+        HubPage(title:"We're here to help.",subtitle:"Your tickets and attachments are private to you and authorized support staff.",refreshKey:"support/tickets") {
             Button { creating = true } label: { Label("Start a support ticket",systemImage:"plus.bubble") }.buttonStyle(PrimaryButton()).disabled(!hub.isAvailable)
             TextField("Search help articles",text:$search).fieldStyle().submitLabel(.search).onSubmit { Task { await hub.collection("support/articles",query:search) } }
             HubStatus(key:"support/articles")
@@ -136,6 +137,7 @@ struct SupportTicketView: View {
     @State private var showingImage = false
     @State private var uploading = false
     @State private var uploadID = UUID().uuidString
+    @State private var uploadBytes: Data?
     var body: some View {
         ScrollView { VStack(alignment:.leading,spacing:18) {
             SectionTitle(title:ticket["subject"].string.isEmpty ? "Private conversation" : ticket["subject"].string,caption:ticket["status"].string.replacingOccurrences(of:"_",with:" ").capitalized)
@@ -151,14 +153,15 @@ struct SupportTicketView: View {
                 TextEditor(text:$message).frame(height:110).scrollContentBackground(.hidden).padding(12).background(AH.panel,in:RoundedRectangle(cornerRadius:16)).accessibilityLabel("Reply")
                 Button("Send reply") { Task { if await hub.action("support.reply",["ticketId":.string(ticketID),"body":.string(message)]) { message = ""; await load() } } }.buttonStyle(PrimaryButton()).disabled(!hub.canAct || message.trimmingCharacters(in:.whitespacesAndNewlines).isEmpty || message.count > 4000)
                 PhotosPicker(selection:$photo,matching:.images) { Label(uploading ? "Uploading screenshot…" : "Attach screenshot",systemImage:"paperclip") }.font(.subheadline).disabled(uploading || !hub.canAct)
+                if let photo,!uploading { Button("Retry saved attachment") { Task { await upload(photo) } }.font(.caption).disabled(!hub.canAct) }
                 Text("Images only, up to 5 MB. Attachments require account authorization to view.").font(.caption2).foregroundStyle(AH.muted)
                 Button("Mark resolved") { Task { if await hub.action("support.resolve",["ticketId":.string(ticketID)]) { await load() } } }.font(.caption).disabled(!hub.canAct)
             }
         }.padding(20) }.pageBackground().navigationTitle("Support").navigationBarTitleDisplayMode(.inline).privacySensitive()
         .task { await load() }.refreshable { await load() }
-        .onChange(of:photo) { _,newPhoto in guard let newPhoto else { return }; uploadID = UUID().uuidString; Task { await upload(newPhoto) } }
+        .onChange(of:photo) { _,newPhoto in guard let newPhoto else { return }; uploadID = UUID().uuidString; uploadBytes = nil; Task { await upload(newPhoto) } }
         .sheet(isPresented:$showingImage) { NavigationStack { Group { if let attachmentImage { Image(uiImage:attachmentImage).resizable().scaledToFit() } }.pageBackground().toolbar { ToolbarItem(placement:.cancellationAction) { Button("Close") { showingImage = false; attachmentImage = nil } } } } }
-        .onChange(of:hub.ownerID) { _,_ in ticket = .null; attachmentImage = nil; showingImage = false; message = "" }
+        .onChange(of:hub.ownerID) { _,_ in ticket = .null; attachmentImage = nil; showingImage = false; message = ""; uploadBytes = nil; photo = nil }
     }
     private func load() async {
         loading = true; defer { loading = false }
@@ -168,10 +171,11 @@ struct SupportTicketView: View {
     private func upload(_ item: PhotosPickerItem) async {
         uploading = true; defer { uploading = false }
         do {
-            guard let source = try await item.loadTransferable(type:Data.self), let image = UIImage(data:source), let bytes = image.jpegData(compressionQuality:0.85) else { throw CasinoError.message("This photo could not be opened.") }
+            if uploadBytes == nil { guard let source = try await item.loadTransferable(type:Data.self), let image = UIImage(data:source), let bytes = image.jpegData(compressionQuality:0.85) else { throw CasinoError.message("This photo could not be opened.") }; uploadBytes = bytes }
+            guard let bytes = uploadBytes else { throw CasinoError.message("Choose a screenshot to attach.") }
             guard bytes.count <= 5*1024*1024 else { throw CasinoError.message("Choose a smaller screenshot, under 5 MB.") }
             _ = try await store.privateData("/v2/support/tickets/\(HubStore.escape(ticketID))/attachments/\(uploadID)",upload:bytes,contentType:"image/jpeg",filename:"Screenshot.jpg")
-            photo = nil; await load()
+            photo = nil; uploadBytes = nil; await load()
         } catch is CancellationError {} catch { self.error = error.localizedDescription }
     }
     private func open(_ attachment: JSONValue) async {
@@ -183,7 +187,7 @@ struct SupportTicketView: View {
 struct NotificationsView: View {
     @EnvironmentObject var hub: HubStore
     var body: some View {
-        HubPage(title:"Your updates.",subtitle:"Private details stay inside AccessHub.") {
+        HubPage(title:"Your updates.",subtitle:"Private details stay inside AccessHub.",refreshKey:"notifications") {
             HubLinkCard(title:"Notification settings",detail:"Categories, quiet hours and device push",symbol:"slider.horizontal.3") { NotificationPreferencesView() }
             if !hub.items("notifications").isEmpty { Button("Mark all read") { Task { if await hub.action("notification.readAll") { await hub.collection("notifications") } } }.font(.caption.bold()).disabled(!hub.canAct) }
             HubStatus(key:"notifications")
@@ -245,7 +249,7 @@ struct HubProgressView: View {
     @EnvironmentObject var hub: HubStore
     @EnvironmentObject var store: CasinoStore
     var body: some View {
-        HubPage(title:"More ways to make it yours.",subtitle:"Hub cosmetic progression is earned through community learning. Casino progress stays separate.") {
+        HubPage(title:"More ways to make it yours.",subtitle:"Hub cosmetic progression is earned through community learning. Casino progress stays separate.",refreshKey:"learning") {
             Panel { VStack(alignment:.leading,spacing:16) {
                 Text("HUB LEVEL \(max(1,hub.profile["level"].int))").font(.caption.bold()).tracking(1.5).foregroundStyle(AH.emerald)
                 Text("\(hub.profile["hubXP"].int) cosmetic XP").font(.title2.bold())

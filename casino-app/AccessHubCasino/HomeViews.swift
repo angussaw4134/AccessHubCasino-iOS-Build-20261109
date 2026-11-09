@@ -22,7 +22,7 @@ struct HomeView: View {
                     ForEach([CasinoGame.blackjack,.mines,.slots]) { game in
                         NavigationLink { GameScreen(game:game) } label: { CompactGame(game:game) }.buttonStyle(.plain)
                     }
-                    Button { store.selectedTab = 3 } label: {
+                    NavigationLink { ProgressScreen() } label: {
                         VStack(alignment:.leading,spacing:13) {
                             Text("01%").font(.system(size:35,weight:.light,design:.rounded)).foregroundStyle(AH.emerald)
                             Text("A little back.").font(.headline)

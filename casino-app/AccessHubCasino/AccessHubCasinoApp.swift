@@ -138,14 +138,16 @@ struct HubDestinationSheet: View {
     }
     @ViewBuilder private var content: some View {
         switch destination {
+        case .home: HubHomeView()
+        case .profile: HubProfileSettingsView()
         case .daily: DailyRewardView()
         case .giveaways: GiveawaysView()
         case .vouchers: VoucherWalletView()
         case .voucher(let id): VoucherWalletView(selectedID:id)
         case .inventory: InventoryView()
-        case .marketplace: MarketplaceView()
+        case .marketplace: MarketplaceView(initialFilter:"history")
         case .points: PointsHistoryView()
-        case .friends: FriendsView()
+        case .friends: FriendsView(initialFilter:"requests")
         case .support: HubSupportView()
         case .ticket(let id): SupportTicketView(ticketID:id)
         case .snake(let id): SnakeRoomView(roomID:id)

@@ -16,7 +16,7 @@ struct SnakeLobbyView: View {
     @State private var spectate = false
     private var createKey: String { "accesshub.snake.create." + hub.ownerID }
     var body: some View {
-        HubPage(title:"Find your rhythm.",subtitle:"Solo practice and live friend challenges share the same fair rules.") {
+        HubPage(title:"Find your rhythm.",subtitle:"Solo practice and live friend challenges share the same fair rules.",refreshKey:"matches") {
             HubFeatureArt(name:"SnakeArt").frame(height:185).clipShape(RoundedRectangle(cornerRadius:22))
             if let saved = UserDefaults.standard.dictionary(forKey:"accesshub.snake.last."+hub.ownerID), let room = saved["roomID"] as? String, !["finished","cancelled"].contains(saved["phase"] as? String ?? "") {
                 NavigationLink { SnakeRoomView(roomID:room) } label: { Label("Return to your room",systemImage:"arrow.clockwise") }.buttonStyle(PrimaryButton(secondary:true))
@@ -44,15 +44,18 @@ struct SnakeLobbyView: View {
             Button("Read the complete match rules") { rules = true }.font(.subheadline.bold())
             SectionTitle(title:"Your recent matches")
             HubStatus(key:"matches")
+            if !hub.items("matches").isEmpty { Panel { HStack { Metric(title:"Loaded matches",value:String(hub.items("matches").count)); Metric(title:"Best loaded score",value:String(hub.items("matches").flatMap { $0["scores"].array }.filter { $0.id == hub.ownerID }.map { $0["score"].int }.max() ?? 0)) } } }
             if hub.items("matches").isEmpty { EmptyState(title:"Your first move is ahead.",detail:"Completed real matches will appear here.") }
             ForEach(hub.items("matches")) { match in
-                NavigationLink { SnakeRoomView(roomID:match["roomId"].string.isEmpty ? match.id : match["roomId"].string) } label: { Panel { HStack { VStack(alignment:.leading,spacing:6) { Text(match["mode"].string == "solo" ? "Solo practice" : "Live challenge").font(.headline); Text(readableDate(match["endedAt"])).font(.caption).foregroundStyle(AH.muted) }; Spacer(); Text(match["outcome"].string.capitalized).font(.caption).foregroundStyle(AH.emerald) } } }.buttonStyle(.plain)
+                NavigationLink { SnakeRoomView(roomID:match["roomId"].string.isEmpty ? match.id : match["roomId"].string) } label: { Panel { HStack { VStack(alignment:.leading,spacing:6) { Text(match["mode"].string == "solo" ? "Solo practice" : "Live challenge").font(.headline); Text(readableDate(match["endedAt"])).font(.caption).foregroundStyle(AH.muted) }; Spacer(); Text(matchResult(match)).font(.caption).foregroundStyle(AH.emerald) } } }.buttonStyle(.plain)
             }
+            HubLoadMore(key:"matches")
         }.task { await hub.collection("matches") }
         .navigationDestination(isPresented:Binding(get:{ destination != nil },set:{ if !$0 { destination = nil } })) { if let destination { SnakeRoomView(roomID:destination) } }
         .sheet(isPresented:$rules) { NavigationStack { SnakeRulesView() } }
     }
     private var validStake: Bool { mode == "solo" || (Int(stake) != nil && (0...10000).contains(Int(stake) ?? -1)) }
+    private func matchResult(_ match: JSONValue) -> String { let outcome = match["outcome"].string; if ["a","b"].contains(outcome) { return match["playerIds"][outcome == "a" ? 0 : 1].string == hub.ownerID ? "Won" : "Lost" }; return outcome == "solo" ? "Completed" : outcome.capitalized }
     private func create() async {
         guard !busy else { return }; busy = true; error = nil; defer { busy = false }
         do {
@@ -111,7 +114,11 @@ struct SnakeRoomView: View {
                 Panel { VStack(alignment:.leading,spacing:12) {
                     Text(resultTitle).font(.title2.bold()).foregroundStyle(AH.emerald).accessibilityIdentifier("snakeResult")
                     Text(room["result"]["reason"].string.replacingOccurrences(of:"_",with:" ").capitalized).font(.subheadline).foregroundStyle(AH.muted)
-                    Text(room["settlementStatus"].string == "pending" ? "Credit settlement pending · the server is retrying" : room["stakeUnits"].double == 0 ? "Friendly session complete" : "Credit settlement confirmed").font(.caption).foregroundStyle(room["settlementStatus"].string == "pending" ? AH.gold : AH.emerald)
+                    Text(room["settlementStatus"].string == "pending" ? "Credit settlement pending · the server is retrying" : room["stakeUnits"].double == 0 ? "Friendly session complete" : room["settlementStatus"].string == "not_required" || room["settlement"]["reason"].string == "no_reservation" ? "No credits were reserved" : "Credit settlement confirmed").font(.caption).foregroundStyle(room["settlementStatus"].string == "pending" ? AH.gold : AH.emerald)
+                    if room["settlementStatus"].string == "settled",room["settlement"]["returnedAUnits"].exists,room["yourRole"].string == "player" {
+                        let returned = room["settlement"][room["settlement"]["playerA"].string == hub.ownerID ? "returnedAUnits" : "returnedBUnits"].double
+                        HStack { Metric(title:"Committed",value:Credits.format(room["stakeUnits"].double)); Metric(title:"Returned",value:Credits.format(returned)); Metric(title:"Net",value:Credits.format(returned-room["stakeUnits"].double)) }
+                    }
                     NavigationLink { SnakeLobbyView() } label: { Text("Play again") }.buttonStyle(PrimaryButton())
                 } }
             } else if room["yourRole"].string == "player" { Button(room["phase"].string == "running" ? "Leave & forfeit" : "Cancel my participation",role:.destructive) { confirmLeave = true }.font(.caption).disabled(!live.connected || !live.pending.isEmpty) }

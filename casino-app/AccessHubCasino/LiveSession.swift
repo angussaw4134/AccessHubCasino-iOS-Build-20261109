@@ -203,7 +203,7 @@ struct ChatRoomView: View {
     private func connect() { live.connect(store:store,path:"/v2/chat/" + channel) }
     private func messageView(_ message: JSONValue) -> some View {
         Panel(padding:14) { VStack(alignment:.leading,spacing:8) {
-            HStack { Text(message["user"]["username"].string).font(.caption.bold()).foregroundStyle(AH.emerald); Spacer(); Text(readableDate(message["createdAt"])).font(.system(size:9)).foregroundStyle(AH.muted) }
+            HStack { PublicHubAvatar(name:message["user"]["avatar"].string).frame(width:26,height:26); Text(message["user"]["username"].string).font(.caption.bold()).foregroundStyle(AH.emerald); Spacer(); Text(readableDate(message["createdAt"])).font(.system(size:9)).foregroundStyle(AH.muted) }
             if message["parentId"].exists { Text(live.messages.first(where:{ $0.id == message["parentId"].string })?["body"].string ?? "Reply to an earlier message").font(.caption2).foregroundStyle(AH.muted).lineLimit(2).padding(.leading,8).overlay(alignment:.leading) { Rectangle().fill(AH.emerald.opacity(0.4)).frame(width:2) } }
             if message["replyUnavailable"].bool { Text("Reply unavailable").font(.caption2).foregroundStyle(AH.muted) }
             Text(message["deletedAt"].exists ? "Message removed" : message["body"].string).font(.subheadline).foregroundStyle(message["deletedAt"].exists ? AH.muted : AH.text).textSelection(.enabled)
@@ -226,7 +226,7 @@ struct CommunityProfilePreview: View {
     let person: JSONValue
     var body: some View {
         NavigationStack { VStack(alignment:.leading,spacing:24) {
-            CosmeticMotif(kind:"avatarFrame",art:person["avatar"].string).frame(height:130)
+            PublicHubAvatar(name:person["avatar"].string).frame(width:100,height:100)
             SectionTitle(title:person["username"].string,caption:"AccessHub community member")
             if person.id != hub.ownerID {
                 Button("Send friend request") { Task { if await hub.action("friend.request",["userId":.string(person.id)]) { dismiss() } } }.buttonStyle(PrimaryButton()).disabled(!hub.canAct)

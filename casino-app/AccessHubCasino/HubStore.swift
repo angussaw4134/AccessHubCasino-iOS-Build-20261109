@@ -13,7 +13,7 @@ struct HubCommand: Codable, Equatable {
 }
 
 enum HubDestination: Hashable, Identifiable {
-    case daily, giveaways, vouchers, inventory, marketplace, points, friends, support, notifications, preferences, progress
+    case home, profile, daily, giveaways, vouchers, inventory, marketplace, points, friends, support, notifications, preferences, progress
     case ticket(String), snake(String), voucher(String)
     var id: String { String(describing:self) }
     static func notification(_ value: JSONValue) -> HubDestination? {
@@ -28,7 +28,8 @@ enum HubDestination: Hashable, Identifiable {
         case "marketplace", "sale": return .marketplace
         case "daily": return .daily
         case "notifications": return .notifications
-        case "profile": return .progress
+        case "home": return .home
+        case "profile": return .profile
         default: return nil
         }
     }
@@ -53,6 +54,7 @@ enum HubDestination: Hashable, Identifiable {
     private var generation = 0
     private var bootstrapVersion = 0
     private var collectionQueries: [String:(String,String)] = [:]
+    private var collectionVersions: [String:Int] = [:]
     var points: Int { bootstrap["pointsBalance"].int }
     var profile: JSONValue { bootstrap["profile"] }
     func equipped(_ kind: String) -> JSONValue { bootstrap["equippedItems"][kind] }
@@ -64,6 +66,7 @@ enum HubDestination: Hashable, Identifiable {
     func attach(_ store: CasinoStore) async {
         refreshTask?.cancel(); refreshTask = nil
         generation += 1
+        let epoch = generation
         loading = []; busy = false
         let nextOwner = store.state["user"]["id"].string
         casino = store
@@ -77,8 +80,11 @@ enum HubDestination: Hashable, Identifiable {
         }
         store.hubHasPending = pending != nil
         await refresh()
+        guard epoch == generation else { return }
         await loadLearning()
+        guard epoch == generation else { return }
         if pending != nil { await retry() }
+        guard epoch == generation else { return }
         refreshTask = Task { [weak self] in
             while !Task.isCancelled {
                 try? await Task.sleep(for:.seconds(20))
@@ -87,7 +93,7 @@ enum HubDestination: Hashable, Identifiable {
             }
         }
     }
-    func suspend() { refreshTask?.cancel(); refreshTask = nil }
+    func suspend() { refreshTask?.cancel(); refreshTask = nil; generation += 1; loading = []; busy = false }
     func resume() async { if let casino { await attach(casino) } }
     func fetch(_ path: String) async throws -> JSONValue {
         guard let casino, casino.state["user"]["id"].string == ownerID else { throw CancellationError() }
@@ -114,16 +120,19 @@ enum HubDestination: Hashable, Identifiable {
     }
     func items(_ key: String) -> [JSONValue] { (collections[key] ?? .null)["items"].array }
     func collection(_ key: String, query: String = "", filter: String = "", more: Bool = false) async {
-        guard !loading.contains(key), !ownerID.isEmpty else { return }
+        guard !ownerID.isEmpty, !more || !loading.contains(key) else { return }
         let stamp = generation
+        let version = (collectionVersions[key] ?? 0) + 1
+        collectionVersions[key] = version
         if !more { collectionQueries[key] = (query,filter) }
-        loading.insert(key); defer { if stamp == generation { loading.remove(key) } }
+        loading.insert(key); defer { if stamp == generation && collectionVersions[key] == version { loading.remove(key) } }
         do {
             var path = "/v2/" + key + "?limit=40"
             if !query.isEmpty { path += "&q=" + Self.escape(query) }
             if !filter.isEmpty { path += "&filter=" + Self.escape(filter) }
             if more, let old = collections[key], !old["nextCursor"].string.isEmpty { path += "&cursor=" + Self.escape(old["nextCursor"].string) }
             let response = try await fetch(path)
+            guard collectionVersions[key] == version else { return }
             if more {
                 let old = items(key)
                 var seen = Set(old.map { $0["id"].string })
@@ -132,9 +141,14 @@ enum HubDestination: Hashable, Identifiable {
                 collections[key] = .object(body)
             } else { collections[key] = response }
             errors.removeValue(forKey:key)
-        } catch is CancellationError {} catch { if stamp == generation { errors[key] = error.localizedDescription } }
+        } catch is CancellationError {} catch { if stamp == generation && collectionVersions[key] == version { errors[key] = error.localizedDescription } }
     }
     func loadMore(_ key: String) async { let criteria = collectionQueries[key] ?? ("",""); await collection(key,query:criteria.0,filter:criteria.1,more:true) }
+    func reload(_ key: String) async {
+        if key == "daily" { await daily() }
+        else if key == "learning" { await loadLearning() }
+        else { let criteria = collectionQueries[key] ?? ("",""); await collection(key,query:criteria.0,filter:criteria.1) }
+    }
     func daily() async {
         do { collections["daily"] = try await fetch("/v2/daily"); errors.removeValue(forKey:"daily") }
         catch is CancellationError {} catch { errors["daily"] = error.localizedDescription }

@@ -164,7 +164,7 @@ struct ProfileView: View {
         ScrollView {
             VStack(alignment:.leading,spacing:22) {
                 HubHeader()
-                HStack(spacing:16) { AvatarView(name:store.state["settings"]["avatar"].string).frame(width:70,height:70); VStack(alignment:.leading,spacing:7) { Text(store.state["user"]["isGuest"].bool ? "Your guest profile" : store.state["user"]["username"].string).font(.title2.weight(.semibold)); Text("Level \(store.state["progress"]["level"].int) · AccessHub member").font(.caption).foregroundStyle(AH.muted) } }
+                HStack(spacing:16) { HubAvatarView().frame(width:70,height:70); VStack(alignment:.leading,spacing:7) { Text(hub.profile["displayName"].string.isEmpty ? (store.state["user"]["isGuest"].bool ? "Your guest profile" : store.state["user"]["username"].string) : hub.profile["displayName"].string).font(.title2.weight(.semibold)); Text("Hub level \(max(1,hub.profile["level"].int)) · Casino level \(store.state["progress"]["level"].int)").font(.caption).foregroundStyle(AH.muted) } }.padding(18).frame(maxWidth:.infinity,alignment:.leading).background(LinearGradient(colors:[hub.equipped("profileTheme").exists ? Color.hubHex(hub.equipped("profileTheme")["color"].string).opacity(0.20) : AH.panel,AH.panel],startPoint:.topLeading,endPoint:.bottomTrailing),in:RoundedRectangle(cornerRadius:22))
                 HubLinkCard(title:"Community profile & privacy",detail:hub.profile["displayName"].string,symbol:"person.crop.circle") { HubProfileSettingsView() }
                 HubLinkCard(title:"Hub level & collection",detail:"\(hub.points) Hub Points · cosmetic progression",symbol:"sparkles") { HubProgressView() }
                 HubLinkCard(title:"Access Hub Credits",detail:"\(Credits.format(store.balance)) · administrator funded",symbol:"circle.hexagongrid") { CreditsView() }.accessibilityIdentifier("profileCredits")
@@ -184,7 +184,7 @@ struct ProfileView: View {
                 Panel { VStack(alignment:.leading,spacing:18) { Text("Your practice, in numbers").font(.headline); HStack { Metric(title:"Rounds",value:String(store.state["stats"]["rounds"].int)); Metric(title:"Credits staked",value:Credits.format(store.state["stats"]["stakedUnits"].double)) }; HStack { Metric(title:"Credits returned",value:Credits.format(store.state["stats"]["returnedUnits"].double)); Metric(title:"Game net",value:Credits.format(store.state["stats"]["netUnits"].double)) } } }
                 SectionTitle(title:"Make yourself at home")
                 Panel { VStack(alignment:.leading,spacing:20) {
-                    Text("Avatar").font(.headline)
+                    Text("Casino progress avatar").font(.headline)
                     HStack(spacing:14) { ForEach(["monogram","gem","orbit","crown"],id:\.self) { avatar in
                         let unlocked = store.state["progress"]["unlocks"].array.map(\.string).contains(avatar)
                         Button { Task { await store.setting("avatar",value:.string(avatar)) } } label: { VStack(spacing:7) { AvatarView(name:avatar).frame(maxWidth:58).overlay(alignment:.bottomTrailing) { if !unlocked { Image(systemName:"lock.fill").font(.caption2).foregroundStyle(AH.muted) } }; Circle().fill(store.state["settings"]["avatar"].string == avatar ? AH.emerald : .clear).frame(width:4,height:4) } }.disabled(!unlocked || !store.canAct).opacity(unlocked ? 1 : 0.35).accessibilityLabel(avatar.capitalized + (unlocked ? " avatar" : " avatar, locked"))
@@ -192,6 +192,7 @@ struct ProfileView: View {
                     CosmeticPicker(title:"Table style",key:"theme",options:["emerald","midnight","aurora"])
                     CosmeticPicker(title:"Card back",key:"cardBack",options:["classic","circuit","royal"])
                     CosmeticPicker(title:"Profile decoration",key:"decoration",options:["plain","halo","laurel"])
+                    if hub.equipped("cardBack").exists || hub.equipped("tableTheme").exists { Text("An equipped Hub card back or table theme takes priority at your Blackjack table. Unequip it in Inventory to use these Casino unlocks.").font(.caption2).foregroundStyle(AH.emerald) }
                     Text("Cosmetics unlock through learning at levels 2, 3 and 4. Table styles and card backs appear at the Blackjack table. Profile decorations surround your selected avatar across Home, Progress and Profile; Halo unlocks at level 2 and Laurel at level 4.").font(.caption2).foregroundStyle(AH.muted)
                 } }
                 Panel { VStack(spacing:18) { settingToggle("Sound effects",key:"sound"); settingToggle("Haptic feedback",key:"haptics"); settingToggle("Reduce motion",key:"reducedMotion"); Text("The iPhone's Reduce Motion setting is always respected. Sound and haptics are independent.").font(.caption2).foregroundStyle(AH.muted).frame(maxWidth:.infinity,alignment:.leading) } }
