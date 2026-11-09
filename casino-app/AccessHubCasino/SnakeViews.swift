@@ -91,15 +91,18 @@ struct SnakeRoomView: View {
     private var arenaStyle: Bool { room["rules"]["version"].int == 2 }
     private var room: JSONValue { live.room }
     var body: some View {
-        ScrollView { VStack(alignment:.leading,spacing:16) {
+        GeometryReader { viewport in
+        ScrollView { VStack(alignment:.leading,spacing:12) {
             HStack { VStack(alignment:.leading,spacing:4) { Text(room["mode"].string == "solo" ? "Solo practice" : "Live Snake").font(.title2.bold()); Text(live.status).font(.caption).foregroundStyle(live.connected ? AH.emerald : AH.gold) }; Spacer(); Button { rules = true } label: { Image(systemName:"info.circle") }.accessibilityLabel("Snake rules") }
             if let error = live.error { Text(error).font(.caption).foregroundStyle(AH.danger) }
             if !live.connected { Button("Reconnect to room") { Task { await restore() } }.font(.caption.bold()) }
             if room["yourRole"].string == "spectator" { Label("Spectating · \(room["spectatorCount"].int) viewers",systemImage:"eye").font(.caption).foregroundStyle(AH.muted) }
+            if !arenaStyle || room["phase"].string == "lobby" {
             HStack(alignment:.top,spacing:12) { ForEach(room["players"].array) { player in VStack(alignment:.leading,spacing:5) { Text(player["username"].string).font(.caption.bold()).lineLimit(1); Text(player["ready"].bool ? "Ready" : "Not ready").font(.caption2).foregroundStyle(player["ready"].bool ? AH.emerald : AH.muted); if let snake = room["game"]["snakes"].array.first(where:{ $0.id == player.id }) { Text("\(snake["score"].int) food").font(.headline) }; if !player["connected"].bool { Text("Reconnecting").font(.caption2).foregroundStyle(AH.gold) } }.frame(maxWidth:.infinity,alignment:.leading) } }
+            }
             ZStack {
                 if arenaStyle {
-                    SnakeFlowArena(current:room["game"],previous:live.previous["room"]["game"],players:room["players"],owner:hub.ownerID,skin:hub.equipped("snakeSkin"),trail:hub.equipped("snakeTrail"),receivedAt:live.receivedAt,reducedMotion:store.reducedMotion,steering:$steering).aspectRatio(1,contentMode:.fit)
+                    SnakeFlowArena(current:room["game"],previous:live.previous["room"]["game"],players:room["players"],owner:hub.ownerID,skin:hub.equipped("snakeSkin"),trail:hub.equipped("snakeTrail"),receivedAt:live.receivedAt,reducedMotion:store.reducedMotion,steering:$steering).frame(height:min(460,max(220,viewport.size.height-320)))
                 } else {
                 SnakeArena(current:room["game"],previous:live.previous["room"]["game"],players:room["players"],owner:hub.ownerID,skin:hub.equipped("snakeSkin"),trail:hub.equipped("snakeTrail"),receivedAt:live.receivedAt,reducedMotion:store.reducedMotion).aspectRatio(1,contentMode:.fit)
                 }
@@ -151,6 +154,7 @@ struct SnakeRoomView: View {
         .onChange(of:room["settlementStatus"].string) { _,_ in Task { await store.refresh(); await hub.collection("matches") } }
         .confirmationDialog("Leave this match?",isPresented:$confirmLeave,titleVisibility:.visible) { Button(room["phase"].string == "running" ? "Forfeit match" : "Cancel participation",role:.destructive) { live.send("leave") }; Button("Keep playing",role:.cancel) {} } message: { Text("Leaving during play forfeits. Before play starts, the match is cancelled and held stakes return. Backgrounding instead allows a 10-second reconnection window while normal collisions continue.") }
         .sheet(isPresented:$rules) { NavigationStack { SnakeRulesView(version:arenaStyle ? 2 : 1) } }
+        }
     }
     private var directionPad: some View {
         VStack(spacing:8) { directionButton("up"); HStack(spacing:34) { directionButton("left"); directionButton("down"); directionButton("right") } }.frame(maxWidth:.infinity)
@@ -241,6 +245,14 @@ struct SnakeFlowArena: View {
                         Text("\(mine["score"].int)  •  FOOD").font(.system(.title3,design:.rounded).bold()).monospacedDigit()
                     }
                 }.foregroundStyle(.white).padding(12).allowsHitTesting(false)
+            }
+            .overlay(alignment:.topTrailing) {
+                VStack(alignment:.trailing,spacing:3) {
+                    ForEach(Array(current["snakes"].array.filter { $0["alive"].bool }.sorted { $0["score"].int > $1["score"].int }.prefix(3))) { snake in
+                        let name = snake["bot"].bool ? snake["name"].string+" CPU" : snake.id == owner ? "YOU" : players.array.first(where:{ $0.id == snake.id })?["username"].string ?? "Player"
+                        Text("\(name)  \(snake["score"].int)").font(.system(size:9,weight:.bold,design:.rounded)).foregroundStyle(.white.opacity(0.7)).lineLimit(1)
+                    }
+                }.frame(maxWidth:100,alignment:.trailing).padding(.top,50).padding(.trailing,12).allowsHitTesting(false)
             }
             .overlay(alignment:.bottomTrailing) { minimap.padding(12).allowsHitTesting(false) }
             .contentShape(Rectangle())
