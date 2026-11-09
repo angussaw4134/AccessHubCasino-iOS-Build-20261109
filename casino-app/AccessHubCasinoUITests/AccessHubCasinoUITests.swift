@@ -182,6 +182,7 @@ final class AccessHubCasinoUITests: XCTestCase {
             // The arena has a combined accessibility label; inspect its screenshot
             // for the visible CPU banner rather than querying a hidden child Text.
             XCTAssertTrue(app.staticTexts["snakeResult"].waitForExistence(timeout:30))
+            XCTAssertEqual(app.staticTexts["snakeResult"].label,"Practice complete")
             attach(app,"Hub authoritative solo Snake completed")
         }
         for (name,control) in [("Blackjack","blackjackDeal"),("Mines","minesStart"),("Slots","slotsSpin"),("Crash","crashEnter")] {
@@ -191,6 +192,39 @@ final class AccessHubCasinoUITests: XCTestCase {
             for _ in 0..<4 { app.swipeDown() }
             attach(app,"Zero-state " + name)
         }
+    }
+    func testContinuousSnakeStaging() throws {
+        try XCTSkipUnless(ProcessInfo.processInfo.environment["ACCESSHUB_RUN_SNAKE_TESTS"] == "1","Isolated staging Snake opt-in required.")
+        let app = launchApplication(),guest = app.buttons["enterGuest"]
+        XCTAssertTrue(guest.waitForExistence(timeout:20));waitEnabled(guest,timeout:20);guest.tap()
+        XCTAssertTrue(app.tabBars.buttons["Home"].waitForExistence(timeout:30))
+        app.tabBars.buttons["Profile"].tap()
+        let identifier = app.staticTexts["profileAccountID"]
+        for _ in 0..<5 where !identifier.isHittable { app.swipeUp() }
+        XCTAssertTrue(identifier.waitForExistence(timeout:10));let createdID = identifier.label
+        addTeardownBlock { [self] in
+            app.tabBars.buttons["Profile"].tap()
+            for _ in 0..<5 where !identifier.isHittable { app.swipeUp() }
+            guard identifier.label == createdID else { XCTFail("Refused cleanup of a different account");return }
+            scrollTo("Delete account and data",app:app).tap()
+            XCTAssertTrue(app.alerts.buttons["Delete permanently"].waitForExistence(timeout:5));app.alerts.buttons["Delete permanently"].tap()
+            XCTAssertTrue(guest.waitForExistence(timeout:30))
+        }
+        openPlayRoot(app);for _ in 0..<5 { app.swipeDown() }
+        scrollTo("snakeLobbyShortcut",app:app).tap()
+        let solo = app.segmentedControls.buttons["Solo practice"]
+        XCTAssertTrue(solo.waitForExistence(timeout:10));solo.tap()
+        waitUntil(timeout:10) { solo.isSelected }
+        scrollTo("snakeCreate",app:app).tap()
+        let ready = scrollTo("Accept terms & ready",app:app);waitEnabled(ready,timeout:20);ready.tap()
+        let joystick = app.otherElements["Steering"].firstMatch
+        XCTAssertTrue(joystick.waitForExistence(timeout:12))
+        joystick.coordinate(withNormalizedOffset:CGVector(dx:0.5,dy:0.5)).press(forDuration:0.1,thenDragTo:joystick.coordinate(withNormalizedOffset:CGVector(dx:0.5,dy:0.85)))
+        attach(app,"Snake after continuous thumb steering")
+        let result = app.staticTexts["snakeResult"]
+        XCTAssertTrue(result.waitForExistence(timeout:30))
+        XCTAssertEqual(result.label,"Practice complete","Server interruptions must fail this gameplay check, not count as success.")
+        attach(app,"Snake natural finish after steering")
     }
     private func launchApplication() -> XCUIApplication {
         let app = XCUIApplication()

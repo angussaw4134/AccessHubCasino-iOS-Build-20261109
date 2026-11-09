@@ -1,0 +1,47 @@
+name: Verify continuous Snake on iPhone
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  snake-touch-and-finish:
+    runs-on: macos-15
+    timeout-minutes: 20
+    env:
+      TEST_RUNNER_ACCESSHUB_RUN_SNAKE_TESTS: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Choose small iPhone
+        run: xcrun simctl list devices available -j | python3 casino-app/scripts/select_simulators.py >> "$GITHUB_ENV"
+      - name: Test real touch steering and natural finish on staging
+        run: |
+          set -o pipefail
+          mkdir -p casino-app/build
+          xcodebuild -project casino-app/AccessHubCasino.xcodeproj -scheme AccessHubCasino \
+            -destination "platform=iOS Simulator,id=$SMALL_ID" \
+            -derivedDataPath casino-app/build/simulator \
+            -resultBundlePath casino-app/build/Snake-iPhone.xcresult \
+            -only-testing:AccessHubCasinoUITests/AccessHubCasinoUITests/testContinuousSnakeStaging \
+            ACCESSHUB_API_BASE_URL=https://accesshub-staging.fejiofasj.workers.dev \
+            CODE_SIGNING_ALLOWED=YES CODE_SIGN_IDENTITY=- \
+            test 2>&1 | tee casino-app/build/snake-iphone.log
+      - name: Export screen evidence
+        if: always()
+        run: |
+          mkdir -p casino-app/build/attachments casino-app/build/summaries
+          RESULT=casino-app/build/Snake-iPhone.xcresult
+          if [ -d "$RESULT" ]; then
+            xcrun xcresulttool get test-results summary --path "$RESULT" > casino-app/build/summaries/Snake-iPhone.json || true
+            xcrun xcresulttool export attachments --path "$RESULT" --output-path casino-app/build/attachments || true
+          fi
+          python3 casino-app/scripts/sanitize-test-evidence.py casino-app/build
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: AccessHub-Snake-touch-evidence
+          retention-days: 14
+          path: |
+            casino-app/build/snake-iphone.log
+            casino-app/build/summaries/*.json
+            casino-app/build/attachments/**/*.png
+            casino-app/build/attachments/**/manifest.json
