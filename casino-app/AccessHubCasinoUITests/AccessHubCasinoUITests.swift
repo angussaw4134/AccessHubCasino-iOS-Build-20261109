@@ -163,8 +163,17 @@ final class AccessHubCasinoUITests: XCTestCase {
             openPlayRoot(app)
             for _ in 0..<5 { app.swipeDown() }
             scrollTo("snakeLobbyShortcut",app:app).tap()
-            app.segmentedControls.buttons["Solo practice"].tap()
-            scrollTo("snakeCreate",app:app).tap()
+            let soloMode = app.segmentedControls.buttons["Solo practice"]
+            XCTAssertTrue(soloMode.waitForExistence(timeout:10))
+            for _ in 0..<5 where !soloMode.isHittable { app.swipeUp() }
+            XCTAssertTrue(soloMode.isHittable,"The actual Solo control must be visible before choosing a mode.")
+            attach(app,"Snake lobby before mode selection")
+            soloMode.tap()
+            waitUntil(timeout:10) { soloMode.isSelected && app.buttons["snakeCreate"].label == "Create solo session" }
+            attach(app,"Snake solo mode confirmed before create")
+            let createSolo = scrollTo("snakeCreate",app:app)
+            XCTAssertEqual(createSolo.label,"Create solo session","Scrolling must not change the selected game rules.")
+            createSolo.tap()
             let ready = scrollTo("Accept terms & ready",app:app)
             waitEnabled(ready,timeout:20); ready.tap()
             XCTAssertTrue(app.staticTexts["snakeResult"].waitForExistence(timeout:30))
