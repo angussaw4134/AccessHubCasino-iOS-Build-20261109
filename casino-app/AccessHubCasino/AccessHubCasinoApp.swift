@@ -90,7 +90,7 @@ struct MainTabs: View {
     @State private var signIn = false
     var body: some View {
         TabView(selection:$store.selectedTab) {
-            NavigationStack { HubSupportView() }.tabItem { Label("Support",systemImage:"bubble.left.and.bubble.right") }.tag(0)
+            NavigationStack { HubSupportView().toolbar(.hidden,for:.navigationBar) }.tabItem { Label("Support",systemImage:"bubble.left.and.bubble.right") }.tag(0)
             NavigationStack { AddOnsView() }.tabItem { Label("Add-ons",systemImage:"square.stack.3d.up") }.tag(1)
         }.toolbarBackground(AH.background,for:.tabBar).toolbarBackground(.visible,for:.tabBar)
             .safeAreaInset(edge:.top,spacing:0) {

@@ -114,7 +114,7 @@ struct HubSupportView: View {
                 HubLinkCard(title:ticket["subject"].string,detail:ticket["status"].string.replacingOccurrences(of:"_",with:" ").capitalized + " · " + readableDate(ticket["updatedAt"]),symbol:"bubble.left") { SupportTicketView(ticketID:ticket.id) }
             }
             HubLoadMore(key:"support/tickets")
-        }.toolbar(.hidden,for:.navigationBar).task(id:hub.ownerID) { await hub.collection("support/articles"); await hub.collection("support/tickets") }
+        }.task(id:hub.ownerID) { await hub.collection("support/articles"); await hub.collection("support/tickets") }
         .sheet(isPresented:$creating) { NewSupportTicketView() }
     }
 }
