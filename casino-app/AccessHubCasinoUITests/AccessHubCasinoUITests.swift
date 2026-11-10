@@ -10,25 +10,22 @@ final class AccessHubCasinoUITests: XCTestCase {
         let app = XCUIApplication()
         app.launchArguments = ["--support-website-smoke"]
         app.launch(); launched = true
-        XCTAssertTrue(app.webViews.firstMatch.waitForExistence(timeout:15))
-        XCTAssertTrue(app.webViews.staticTexts["Support, simplified."].waitForExistence(timeout:30))
-        let signIn = app.webViews.buttons["Sign in"]
-        XCTAssertTrue(signIn.waitForExistence(timeout:10)); signIn.tap()
+        XCTAssertTrue(app.webViews.staticTexts["Your key. Your support."].waitForExistence(timeout:40))
+        XCTAssertTrue(app.webViews.buttons["Continue with key →"].exists)
+        let recover = app.webViews.buttons["Recover an existing support account"]
+        for _ in 0..<3 where !recover.isHittable { app.swipeUp() }
+        recover.tap()
         XCTAssertTrue(app.webViews.staticTexts["Welcome back"].waitForExistence(timeout:5))
         app.terminate(); app.launch()
-        XCTAssertTrue(app.webViews.staticTexts["Support, simplified."].waitForExistence(timeout:30))
+        XCTAssertTrue(app.webViews.staticTexts["Your key. Your support."].waitForExistence(timeout:40))
     }
     func testWelcomeAndSignIn() throws {
         let app = launch()
-        if app.buttons["enterGuest"].waitForExistence(timeout:10) {
-            XCTAssertTrue(app.staticTexts["Support, simplified."].exists)
-            let signIn = app.buttons["Sign in"]
-            for _ in 0..<3 where !signIn.isHittable { app.swipeUp() }
-            signIn.tap()
-            XCTAssertTrue(app.textFields["username"].waitForExistence(timeout:5))
-            XCTAssertTrue(app.secureTextFields["password"].exists)
-            app.buttons["Close"].tap()
-        } else { XCTAssertTrue(app.tabBars.buttons["Support"].waitForExistence(timeout:30)) }
+        XCTAssertTrue(app.webViews.staticTexts["Your key. Your support."].waitForExistence(timeout:40))
+        XCTAssertFalse(app.buttons["enterGuest"].exists)
+        XCTAssertTrue(app.webViews.buttons["Show key"].exists)
+        app.webViews.buttons["Show key"].tap()
+        XCTAssertTrue(app.webViews.buttons["Hide key"].exists)
     }
     func testSupportAddOnsAndSessionRestore() throws {
         let env = ProcessInfo.processInfo.environment

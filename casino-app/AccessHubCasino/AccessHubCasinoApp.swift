@@ -35,36 +35,7 @@ struct SupportWebsiteSmokeView: View {
 #endif
 
 struct RootView: View {
-    @EnvironmentObject var store: CasinoStore
-    @EnvironmentObject var hub: HubStore
-    @EnvironmentObject var push: PushCoordinator
-    @State private var launching = true
-    var body: some View {
-        ZStack {
-            AH.background.ignoresSafeArea()
-            if store.authenticated { MainTabs().id(store.sessionRevision) }
-            else { WelcomeView() }
-            if launching {
-                ZStack { AH.background.ignoresSafeArea(); VStack(spacing:24) { Brand(); Rectangle().fill(AH.emerald).frame(width:32,height:2); Text("SUPPORT & ADD-ONS").font(.caption2).tracking(3).foregroundStyle(AH.muted) } }
-                    .transition(.opacity).zIndex(10)
-            }
-        }
-        .task {
-            async let launch: Void = store.launch()
-            try? await Task.sleep(for:.milliseconds(800))
-            withAnimation(store.reducedMotion ? nil : .easeOut(duration:0.45)) { launching = false }
-            await launch
-        }
-        .task(id:store.state["user"]["id"].string + ":" + String(store.sessionRevision)) {
-            await hub.attach(store)
-            await push.attach(hub:hub,casino:store)
-            if let id = push.pendingNotificationID { await push.open(id:id,hub:hub) }
-        }
-        .onChange(of:push.pendingNotificationID) { _,id in if let id { Task { await push.open(id:id,hub:hub) } } }
-        .alert("AccessHub", isPresented: Binding(get:{ store.error != nil },set:{ if !$0 { store.error = nil } })) {
-            Button("OK",role:.cancel) { store.error = nil }
-        } message: { Text(store.error ?? "") }
-    }
+    var body: some View { MainTabs() }
 }
 
 struct WelcomeView: View {
@@ -110,10 +81,10 @@ struct MainTabs: View {
             SupportWebSurface(model:web).ignoresSafeArea(.container,edges:.bottom)
             if web.loading { ProgressView("Opening support…").padding(24).background(AH.panel,in:RoundedRectangle(cornerRadius:20)) }
             if let error = web.error {
-                VStack(spacing:20) { Text("Let’s reconnect.").font(.title2); Text(error).font(.subheadline); Button("Try again") { Task { await web.prepare() } }.buttonStyle(PrimaryButton()); Button("Account") { account = true } }.padding(28).background(AH.panel,in:RoundedRectangle(cornerRadius:24)).padding(24)
+                VStack(spacing:20) { Text("Let’s reconnect.").font(.title2); Text(error).font(.subheadline); Button("Try again") { Task { await web.prepare() } }.buttonStyle(PrimaryButton()); Button("Open sign-in") { web.web.load(URLRequest(url:SupportWebModel.base)) } }.padding(28).background(AH.panel,in:RoundedRectangle(cornerRadius:24)).padding(24)
             }
         }
-        .task { web.openAccount = { account = true }; await web.prepare() }
+        .task { web.openAccount = { web.web.load(URLRequest(url:SupportWebModel.base)) }; await web.prepare() }
         .sheet(isPresented:$account) { NavigationStack { SupportAccountView().toolbar { ToolbarItem(placement:.cancellationAction) { Button("Done") { account = false } } } } }
     }
 }
@@ -126,7 +97,7 @@ struct MainTabs: View {
     var openAccount: (() -> Void)?
     override init() {
         let configuration = WKWebViewConfiguration()
-        configuration.websiteDataStore = .nonPersistent()
+        configuration.websiteDataStore = .default()
         configuration.preferences.javaScriptCanOpenWindowsAutomatically = false
         web = WKWebView(frame:.zero,configuration:configuration)
         super.init()
@@ -139,24 +110,36 @@ struct MainTabs: View {
     }
     func prepare() async {
         loading = true; error = nil
-        guard let token = SessionVault.read() else { loading = false; error = "Open Account and sign in again."; return }
-        do {
-            var request = URLRequest(url:Self.base.appendingPathComponent("api/session/restore"))
-            request.httpMethod = "POST"; request.timeoutInterval = 25
-            request.setValue("Bearer " + token,forHTTPHeaderField:"Authorization")
-            let configuration = URLSessionConfiguration.ephemeral
-            configuration.httpShouldSetCookies = false
-            let session = URLSession(configuration:configuration)
-            defer { session.finishTasksAndInvalidate() }
-            let (_,response) = try await session.data(for:request)
-            guard let http = response as? HTTPURLResponse, http.statusCode == 200,
-                  let value = http.value(forHTTPHeaderField:"Set-Cookie"),
-                  let cookie = HTTPCookie.cookies(withResponseHeaderFields:["Set-Cookie":value],for:Self.base).first(where: { $0.name == "__Host-ah-support" }) else { throw URLError(.userAuthenticationRequired) }
-            await withCheckedContinuation { (continuation: CheckedContinuation<Void,Never>) in
-                web.configuration.websiteDataStore.httpCookieStore.setCookie(cookie) { continuation.resume() }
-            }
-            web.load(URLRequest(url:URL(string:"/?native=1",relativeTo:Self.base)!,cachePolicy:.reloadRevalidatingCacheData))
-        } catch { loading = false; self.error = "Check your connection and try again. If your session has expired, sign in through Account." }
+        // The hosted key login owns authentication. Keep its HttpOnly cookie on-device.
+        // Import an older native session once so existing conversations can be linked.
+        let cookies = await withCheckedContinuation { (continuation: CheckedContinuation<[HTTPCookie],Never>) in
+            web.configuration.websiteDataStore.httpCookieStore.getAllCookies { continuation.resume(returning:$0) }
+        }
+        let existing = cookies.contains { $0.name == "__Host-ah-support" && $0.domain == Self.base.host && ($0.expiresDate ?? .distantFuture) > Date() }
+        if !existing && !UserDefaults.standard.bool(forKey:"supportWebSessionImported") {
+            if let token = SessionVault.read() {
+                do {
+                    var request = URLRequest(url:Self.base.appendingPathComponent("api/session/restore"))
+                    request.httpMethod = "POST"; request.timeoutInterval = 15
+                    request.setValue("Bearer " + token,forHTTPHeaderField:"Authorization")
+                    let configuration = URLSessionConfiguration.ephemeral
+                    configuration.httpShouldSetCookies = false
+                    let session = URLSession(configuration:configuration)
+                    defer { session.finishTasksAndInvalidate() }
+                    let (_,response) = try await session.data(for:request)
+                    if let http = response as? HTTPURLResponse {
+                        if http.statusCode == 200, let value = http.value(forHTTPHeaderField:"Set-Cookie"),
+                           let cookie = HTTPCookie.cookies(withResponseHeaderFields:["Set-Cookie":value],for:Self.base).first(where:{$0.name == "__Host-ah-support"}) {
+                            await withCheckedContinuation { (continuation: CheckedContinuation<Void,Never>) in
+                                web.configuration.websiteDataStore.httpCookieStore.setCookie(cookie) { continuation.resume() }
+                            }
+                            UserDefaults.standard.set(true,forKey:"supportWebSessionImported")
+                        } else if http.statusCode == 401 { UserDefaults.standard.set(true,forKey:"supportWebSessionImported") }
+                    }
+                } catch { /* The normal website sign-in remains available. */ }
+            } else { UserDefaults.standard.set(true,forKey:"supportWebSessionImported") }
+        }
+        web.load(URLRequest(url:Self.base,cachePolicy:.reloadRevalidatingCacheData))
     }
     func webView(_ webView:WKWebView,didFinish navigation:WKNavigation!) { loading = false; error = nil }
     func webView(_ webView:WKWebView,didFailProvisionalNavigation navigation:WKNavigation!,withError error:Error) { failed(error) }
