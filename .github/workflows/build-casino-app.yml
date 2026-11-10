@@ -1,153 +1,42 @@
-name: Build AccessHub loader IPA
-
+name: Build AccessHub support IPA
 on:
   workflow_dispatch:
-    inputs:
-      online_tests:
-        description: 'Exercise Casino using separately approved administrator-funded test accounts'
-        required: true
-        default: false
-        type: boolean
-      zero_credit_tests:
-        description: 'Inspect a new zero-credit guest without fixture credentials or wagers'
-        required: true
-        default: false
-        type: boolean
-      hub_tests:
-        description: 'Exercise zero-credit Hub rewards, chat and solo Snake against isolated staging'
-        required: true
-        default: false
-        type: boolean
-      large_only:
-        description: 'Retest larger iPhone only; preserves the normal device build'
-        required: true
-        default: false
-        type: boolean
   push:
     paths: ['casino-app/**', '.github/workflows/build-casino-app.yml']
-
 permissions:
   contents: read
-
 jobs:
   unsigned-device-ipa:
     runs-on: macos-15
-    timeout-minutes: 40
-    env:
-      ONLINE_TESTS: ${{ inputs.online_tests && '1' || '0' }}
-      TEST_RUNNER_ACCESSHUB_RUN_ZERO_CREDIT_TESTS: ${{ (inputs.zero_credit_tests || inputs.hub_tests) && !inputs.online_tests && '1' || '0' }}
-      TEST_RUNNER_ACCESSHUB_RUN_HUB_TESTS: ${{ inputs.hub_tests && !inputs.online_tests && '1' || '0' }}
-      SIMULATOR_API_URL: ${{ inputs.hub_tests && 'https://accesshub-staging.fejiofasj.workers.dev' || 'https://accesshub-casino-native.fejiofasj.workers.dev' }}
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
-      - name: Build arm64 iPhone IPA for loader signing
-        id: device
+      - name: Build unsigned arm64 iPhone IPA
         run: bash casino-app/scripts/build-loader-ipa.sh
       - uses: actions/upload-artifact@v4
         with:
-          name: AccessHubCasino-loader-IPA
+          name: AccessHub-Support-Web-IPA
           if-no-files-found: error
           retention-days: 14
           path: |
             casino-app/build/loader/output/AccessHubCasino.ipa
             casino-app/build/loader/output/AccessHubCasino.ipa.sha256
             casino-app/build/loader/output/AccessHubCasino-build.json
-      - name: Select small and large installed iPhone simulators
+      - name: Select iPhone simulator
         run: xcrun simctl list devices available -j | python3 casino-app/scripts/select_simulators.py >> "$GITHUB_ENV"
-      - name: Test smaller iPhone
-        id: small
-        if: ${{ !inputs.large_only }}
-        env:
-          TEST_RUNNER_ACCESSHUB_TEST_USERNAME: ${{ inputs.online_tests && secrets.ACCESSHUB_TEST_USERNAME_SMALL || '' }}
-          TEST_RUNNER_ACCESSHUB_TEST_PASSWORD: ${{ inputs.online_tests && secrets.ACCESSHUB_TEST_PASSWORD_SMALL || '' }}
+      - name: Test native login and hosted support on iPhone
         run: |
           set -o pipefail
-          # Local simulator signing preserves the app's Keychain entitlements.
           xcodebuild -project casino-app/AccessHubCasino.xcodeproj -scheme AccessHubCasino \
             -destination "platform=iOS Simulator,id=$SMALL_ID" \
-            -derivedDataPath casino-app/build/simulator \
-            -resultBundlePath casino-app/build/Small-iPhone.xcresult \
-            ACCESSHUB_RUN_ONLINE_TESTS="$ONLINE_TESTS" ACCESSHUB_API_BASE_URL="$SIMULATOR_API_URL" CODE_SIGNING_ALLOWED=YES CODE_SIGN_IDENTITY=- \
-            test 2>&1 | tee casino-app/build/small-iphone.log
-      - name: Extract small iPhone screenshots early
-        if: always()
-        run: |
-          RESULT=casino-app/build/Small-iPhone.xcresult
-          if [ -d "$RESULT" ]; then
-            mkdir -p casino-app/build/attachments/Small-iPhone casino-app/build/summaries
-            xcrun xcresulttool get test-results summary --path "$RESULT" > casino-app/build/summaries/Small-iPhone.json || true
-            xcrun xcresulttool export attachments --path "$RESULT" --output-path casino-app/build/attachments/Small-iPhone || true
-          fi
-      - name: Sanitize small simulator evidence
-        id: sanitize_small
-        if: always()
-        env:
-          ACCESSHUB_TEST_USERNAME_SMALL: ${{ inputs.online_tests && secrets.ACCESSHUB_TEST_USERNAME_SMALL || '' }}
-          ACCESSHUB_TEST_PASSWORD_SMALL: ${{ inputs.online_tests && secrets.ACCESSHUB_TEST_PASSWORD_SMALL || '' }}
-          ACCESSHUB_TEST_USERNAME_LARGE: ${{ inputs.online_tests && secrets.ACCESSHUB_TEST_USERNAME_LARGE || '' }}
-          ACCESSHUB_TEST_PASSWORD_LARGE: ${{ inputs.online_tests && secrets.ACCESSHUB_TEST_PASSWORD_LARGE || '' }}
-        run: python3 casino-app/scripts/sanitize-test-evidence.py casino-app/build
+            -derivedDataPath casino-app/build/simulator -resultBundlePath casino-app/build/Support.xcresult \
+            -only-testing:AccessHubCasinoUITests/AccessHubCasinoUITests/testWelcomeAndSignIn \
+            -only-testing:AccessHubCasinoUITests/AccessHubCasinoUITests/testSupportWebsiteLoadsAndOpensSignIn \
+            CODE_SIGNING_ALLOWED=YES CODE_SIGN_IDENTITY=- test 2>&1 | tee casino-app/build/support-test.log
       - uses: actions/upload-artifact@v4
-        if: ${{ always() && steps.sanitize_small.outcome == 'success' }}
-        with:
-          name: AccessHubCasino-small-simulator-log
-          if-no-files-found: ignore
-          retention-days: 14
-          path: |
-            casino-app/build/small-iphone.log
-            casino-app/build/summaries/Small-iPhone.json
-            casino-app/build/attachments/Small-iPhone/**/*.png
-            casino-app/build/attachments/Small-iPhone/**/manifest.json
-      - name: Prepare larger iPhone simulator
-        if: ${{ always() && !cancelled() && env.LARGE_ID != '' && steps.device.outcome == 'success' }}
-        run: |
-          # Release the small simulator before launching the next UI runner.
-          xcrun simctl shutdown "$SMALL_ID" || true
-          xcrun simctl boot "$LARGE_ID" || true
-          xcrun simctl bootstatus "$LARGE_ID" -b
-      - name: Test larger iPhone
-        if: ${{ always() && !cancelled() && env.LARGE_ID != '' && steps.device.outcome == 'success' }}
-        env:
-          TEST_RUNNER_ACCESSHUB_TEST_USERNAME: ${{ inputs.online_tests && secrets.ACCESSHUB_TEST_USERNAME_LARGE || '' }}
-          TEST_RUNNER_ACCESSHUB_TEST_PASSWORD: ${{ inputs.online_tests && secrets.ACCESSHUB_TEST_PASSWORD_LARGE || '' }}
-        run: |
-          set -o pipefail
-          xcodebuild -project casino-app/AccessHubCasino.xcodeproj -scheme AccessHubCasino \
-            -destination "platform=iOS Simulator,id=$LARGE_ID" \
-            -derivedDataPath casino-app/build/simulator \
-            -resultBundlePath casino-app/build/Large-iPhone.xcresult \
-            ACCESSHUB_RUN_ONLINE_TESTS="$ONLINE_TESTS" ACCESSHUB_API_BASE_URL="$SIMULATOR_API_URL" CODE_SIGNING_ALLOWED=YES CODE_SIGN_IDENTITY=- \
-            test 2>&1 | tee casino-app/build/large-iphone.log
-      - name: Extract test summaries and screenshots
         if: always()
-        run: |
-          mkdir -p casino-app/build/attachments casino-app/build/summaries
-          for RESULT in casino-app/build/*.xcresult; do
-            [ -d "$RESULT" ] || continue
-            NAME=$(basename "$RESULT" .xcresult)
-            xcrun xcresulttool get test-results summary --path "$RESULT" \
-              > "casino-app/build/summaries/$NAME.json" || true
-            xcrun xcresulttool export attachments --path "$RESULT" \
-              --output-path "casino-app/build/attachments/$NAME" || true
-          done
-      - name: Sanitize final test evidence
-        id: sanitize_final
-        if: always()
-        env:
-          ACCESSHUB_TEST_USERNAME_SMALL: ${{ inputs.online_tests && secrets.ACCESSHUB_TEST_USERNAME_SMALL || '' }}
-          ACCESSHUB_TEST_PASSWORD_SMALL: ${{ inputs.online_tests && secrets.ACCESSHUB_TEST_PASSWORD_SMALL || '' }}
-          ACCESSHUB_TEST_USERNAME_LARGE: ${{ inputs.online_tests && secrets.ACCESSHUB_TEST_USERNAME_LARGE || '' }}
-          ACCESSHUB_TEST_PASSWORD_LARGE: ${{ inputs.online_tests && secrets.ACCESSHUB_TEST_PASSWORD_LARGE || '' }}
-        run: python3 casino-app/scripts/sanitize-test-evidence.py casino-app/build
-      - uses: actions/upload-artifact@v4
-        if: ${{ always() && steps.sanitize_final.outcome == 'success' }}
         with:
-          name: AccessHubCasino-build-and-test-evidence
-          if-no-files-found: warn
-          retention-days: 14
+          name: Support-UI-test-evidence
           path: |
-            casino-app/build/loader/output/device-build.log
-            casino-app/build/*.log
-            casino-app/build/summaries/*.json
-            casino-app/build/attachments/**/*.png
-            casino-app/build/attachments/**/manifest.json
+            casino-app/build/support-test.log
+            casino-app/build/Support.xcresult

@@ -6,6 +6,18 @@ final class AccessHubCasinoUITests: XCTestCase {
     override func tearDownWithError() throws {
         if launched { let shot = XCTAttachment(screenshot:XCUIScreen.main.screenshot()); shot.name = name; shot.lifetime = .keepAlways; add(shot) }
     }
+    func testSupportWebsiteLoadsAndOpensSignIn() throws {
+        let app = XCUIApplication()
+        app.launchArguments = ["--support-website-smoke"]
+        app.launch(); launched = true
+        XCTAssertTrue(app.webViews.firstMatch.waitForExistence(timeout:15))
+        XCTAssertTrue(app.webViews.staticTexts["Support, simplified."].waitForExistence(timeout:30))
+        let signIn = app.webViews.buttons["Sign in"]
+        XCTAssertTrue(signIn.waitForExistence(timeout:10)); signIn.tap()
+        XCTAssertTrue(app.webViews.staticTexts["Welcome back"].waitForExistence(timeout:5))
+        app.terminate(); app.launch()
+        XCTAssertTrue(app.webViews.staticTexts["Support, simplified."].waitForExistence(timeout:30))
+    }
     func testWelcomeAndSignIn() throws {
         let app = launch()
         if app.buttons["enterGuest"].waitForExistence(timeout:10) {

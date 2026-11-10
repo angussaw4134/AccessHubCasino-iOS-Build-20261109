@@ -1,4 +1,5 @@
 import SwiftUI
+import WebKit
 
 @main @MainActor struct AccessHubCasinoApp: App {
     @UIApplicationDelegateAdaptor(AccessHubAppDelegate.self) private var appDelegate
@@ -8,7 +9,7 @@ import SwiftUI
     @Environment(\.scenePhase) private var phase
     var body: some Scene {
         WindowGroup {
-            RootView().environmentObject(store).environmentObject(hub).environmentObject(push).preferredColorScheme(.dark)
+            AppEntryView().environmentObject(store).environmentObject(hub).environmentObject(push).preferredColorScheme(.dark)
                 .tint(AH.emerald)
                 .onChange(of: phase) { _, phase in
                     if phase == .active { store.resume(); Task { await hub.resume() } } else { store.suspend(); hub.suspend() }
@@ -16,6 +17,22 @@ import SwiftUI
         }
     }
 }
+
+struct AppEntryView: View {
+    var body: some View {
+        #if DEBUG
+        if ProcessInfo.processInfo.arguments.contains("--support-website-smoke") { SupportWebsiteSmokeView() } else { RootView() }
+        #else
+        RootView()
+        #endif
+    }
+}
+#if DEBUG
+struct SupportWebsiteSmokeView: View {
+    @StateObject private var web = SupportWebModel()
+    var body: some View { SupportWebSurface(model:web).task { web.web.load(URLRequest(url:SupportWebModel.base,cachePolicy:.reloadIgnoringLocalCacheData)) } }
+}
+#endif
 
 struct RootView: View {
     @EnvironmentObject var store: CasinoStore
@@ -25,7 +42,7 @@ struct RootView: View {
     var body: some View {
         ZStack {
             AH.background.ignoresSafeArea()
-            if store.authenticated { MainTabs() }
+            if store.authenticated { MainTabs().id(store.sessionRevision) }
             else { WelcomeView() }
             if launching {
                 ZStack { AH.background.ignoresSafeArea(); VStack(spacing:24) { Brand(); Rectangle().fill(AH.emerald).frame(width:32,height:2); Text("SUPPORT & ADD-ONS").font(.caption2).tracking(3).foregroundStyle(AH.muted) } }
@@ -85,33 +102,81 @@ struct WelcomeView: View {
 }
 
 struct MainTabs: View {
-    @EnvironmentObject var store: CasinoStore
-    @EnvironmentObject var hub: HubStore
-    @State private var signIn = false
+    @StateObject private var web = SupportWebModel()
+    @State private var account = false
     var body: some View {
-        TabView(selection:$store.selectedTab) {
-            NavigationStack { HubSupportView().toolbar(.hidden,for:.navigationBar) }.tabItem { Label("Support",systemImage:"bubble.left.and.bubble.right") }.tag(0)
-            NavigationStack { AddOnsView() }.tabItem { Label("Add-ons",systemImage:"square.stack.3d.up") }.tag(1)
-        }.toolbarBackground(AH.background,for:.tabBar).toolbarBackground(.visible,for:.tabBar)
-            .safeAreaInset(edge:.top,spacing:0) {
-                if !store.online || store.pending != nil || store.needsSignIn {
-                    HStack(spacing:10) {
-                        Image(systemName:store.pending == nil ? "wifi.slash" : "arrow.triangle.2.circlepath")
-                        Text(store.needsSignIn ? (store.canRestoreGuest ? "Restore your guest session" : "Sign in to restore this session") : store.pending == nil ? "Reconnecting · controls paused" : "Confirming your saved request").font(.caption)
-                        Spacer()
-                        if store.needsSignIn && store.canRestoreGuest { Button("Restore") { Task { await store.guest() } }.font(.caption.bold()).disabled(store.busy || store.connecting) }
-                        else if store.needsSignIn { Button("Sign in") { signIn = true }.font(.caption.bold()) }
-                        else { Button("Retry") { Task { if store.pending != nil { await store.retryPending() } else { await store.refresh() } } }.font(.caption.bold()).disabled(store.busy) }
-                    }.padding(.horizontal,16).padding(.vertical,10).background(AH.raised).foregroundStyle(AH.gold)
-                }
+        ZStack {
+            AH.background.ignoresSafeArea()
+            SupportWebSurface(model:web).ignoresSafeArea(.container,edges:.bottom)
+            if web.loading { ProgressView("Opening support…").padding(24).background(AH.panel,in:RoundedRectangle(cornerRadius:20)) }
+            if let error = web.error {
+                VStack(spacing:20) { Text("Let’s reconnect.").font(.title2); Text(error).font(.subheadline); Button("Try again") { Task { await web.prepare() } }.buttonStyle(PrimaryButton()); Button("Account") { account = true } }.padding(28).background(AH.panel,in:RoundedRectangle(cornerRadius:24)).padding(24)
             }
-            .sheet(isPresented:$signIn) { AccountView(register:false) }
-            .sheet(item:$hub.destination) { destination in HubDestinationSheet(destination:destination) }
-            .alert("AccessHub",isPresented:Binding(get:{ hub.error != nil },set:{ if !$0 { hub.error = nil } })) { Button("OK",role:.cancel) { hub.error = nil } } message: { Text(hub.error ?? "") }
-            .safeAreaInset(edge:.bottom,spacing:0) {
-                if hub.pending != nil { HStack { Text("Confirming your saved Hub request").font(.caption); Spacer(); Button("Retry") { Task { await hub.retry() } }.font(.caption.bold()).disabled(hub.busy) }.padding(12).background(AH.raised).foregroundStyle(AH.gold) }
-            }
+        }
+        .task { web.openAccount = { account = true }; await web.prepare() }
+        .sheet(isPresented:$account) { NavigationStack { SupportAccountView().toolbar { ToolbarItem(placement:.cancellationAction) { Button("Done") { account = false } } } } }
     }
+}
+
+@MainActor final class SupportWebModel: NSObject, ObservableObject, WKNavigationDelegate {
+    static let base = URL(string:"https://accesshub-support-app.fejiofasj.workers.dev")!
+    let web: WKWebView
+    @Published var loading = true
+    @Published var error: String?
+    var openAccount: (() -> Void)?
+    override init() {
+        let configuration = WKWebViewConfiguration()
+        configuration.websiteDataStore = .nonPersistent()
+        configuration.preferences.javaScriptCanOpenWindowsAutomatically = false
+        web = WKWebView(frame:.zero,configuration:configuration)
+        super.init()
+        web.navigationDelegate = self
+        web.isOpaque = false
+        web.backgroundColor = UIColor(red:16/255,green:27/255,blue:24/255,alpha:1)
+        web.scrollView.backgroundColor = web.backgroundColor
+        web.scrollView.contentInsetAdjustmentBehavior = .never
+        web.accessibilityIdentifier = "supportWebsite"
+    }
+    func prepare() async {
+        loading = true; error = nil
+        guard let token = SessionVault.read() else { loading = false; error = "Open Account and sign in again."; return }
+        do {
+            var request = URLRequest(url:Self.base.appendingPathComponent("api/session/restore"))
+            request.httpMethod = "POST"; request.timeoutInterval = 25
+            request.setValue("Bearer " + token,forHTTPHeaderField:"Authorization")
+            let configuration = URLSessionConfiguration.ephemeral
+            configuration.httpShouldSetCookies = false
+            let session = URLSession(configuration:configuration)
+            defer { session.finishTasksAndInvalidate() }
+            let (_,response) = try await session.data(for:request)
+            guard let http = response as? HTTPURLResponse, http.statusCode == 200,
+                  let value = http.value(forHTTPHeaderField:"Set-Cookie"),
+                  let cookie = HTTPCookie.cookies(withResponseHeaderFields:["Set-Cookie":value],for:Self.base).first(where: { $0.name == "__Host-ah-support" }) else { throw URLError(.userAuthenticationRequired) }
+            await withCheckedContinuation { (continuation: CheckedContinuation<Void,Never>) in
+                web.configuration.websiteDataStore.httpCookieStore.setCookie(cookie) { continuation.resume() }
+            }
+            web.load(URLRequest(url:URL(string:"/?native=1",relativeTo:Self.base)!,cachePolicy:.reloadRevalidatingCacheData))
+        } catch { loading = false; self.error = "Check your connection and try again. If your session has expired, sign in through Account." }
+    }
+    func webView(_ webView:WKWebView,didFinish navigation:WKNavigation!) { loading = false; error = nil }
+    func webView(_ webView:WKWebView,didFailProvisionalNavigation navigation:WKNavigation!,withError error:Error) { failed(error) }
+    func webView(_ webView:WKWebView,didFail navigation:WKNavigation!,withError error:Error) { failed(error) }
+    func failed(_ issue:Error) { if (issue as NSError).code != NSURLErrorCancelled { loading = false; error = "Support could not load. Your saved account is unchanged." } }
+    func webViewWebContentProcessDidTerminate(_ webView:WKWebView) { Task { await prepare() } }
+    func webView(_ webView:WKWebView,decidePolicyFor action:WKNavigationAction,decisionHandler:@escaping (WKNavigationActionPolicy)->Void) {
+        guard let url = action.request.url else { decisionHandler(.cancel); return }
+        if url.scheme == "https",url.host == Self.base.host,url.port == nil {
+            if url.path == "/native/account" { decisionHandler(.cancel); openAccount?(); return }
+            decisionHandler(.allow); return
+        }
+        decisionHandler(.cancel)
+        if action.navigationType == .linkActivated && url.scheme == "https" { UIApplication.shared.open(url) }
+    }
+}
+struct SupportWebSurface: UIViewRepresentable {
+    @ObservedObject var model: SupportWebModel
+    func makeUIView(context:Context) -> WKWebView { model.web }
+    func updateUIView(_ uiView:WKWebView,context:Context) {}
 }
 
 struct HubDestinationSheet: View {
