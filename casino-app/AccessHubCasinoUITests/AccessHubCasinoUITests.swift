@@ -23,9 +23,9 @@ final class AccessHubCasinoUITests: XCTestCase {
         let app = launch()
         XCTAssertTrue(app.webViews.staticTexts["Your key. Your support."].waitForExistence(timeout:40))
         XCTAssertFalse(app.buttons["enterGuest"].exists)
-        XCTAssertTrue(app.webViews.buttons["Show key"].exists)
-        app.webViews.buttons["Show key"].tap()
-        XCTAssertTrue(app.webViews.buttons["Hide key"].exists)
+        let show = app.webViews.descendants(matching:.any).matching(NSPredicate(format:"label == %@", "Show key")).firstMatch
+        XCTAssertTrue(show.waitForExistence(timeout:5)); show.tap()
+        XCTAssertTrue(app.webViews.descendants(matching:.any).matching(NSPredicate(format:"label == %@", "Hide key")).firstMatch.waitForExistence(timeout:5))
     }
     func testSupportAddOnsAndSessionRestore() throws {
         let env = ProcessInfo.processInfo.environment

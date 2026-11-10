@@ -1,6 +1,11 @@
 name: Build AccessHub support IPA
 on:
   workflow_dispatch:
+    inputs:
+      tests_only:
+        description: Retest UI without rebuilding the unchanged device IPA
+        type: boolean
+        default: false
   push:
     paths: ['casino-app/**', '.github/workflows/build-casino-app.yml']
 permissions:
@@ -12,8 +17,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Build unsigned arm64 iPhone IPA
+        if: ${{ !inputs.tests_only }}
         run: bash casino-app/scripts/build-loader-ipa.sh
       - uses: actions/upload-artifact@v4
+        if: ${{ !inputs.tests_only }}
         with:
           name: AccessHub-Support-Web-IPA
           if-no-files-found: error
@@ -27,6 +34,7 @@ jobs:
       - name: Test native login and hosted support on iPhone
         run: |
           set -o pipefail
+          mkdir -p casino-app/build
           xcodebuild -project casino-app/AccessHubCasino.xcodeproj -scheme AccessHubCasino \
             -destination "platform=iOS Simulator,id=$SMALL_ID" \
             -derivedDataPath casino-app/build/simulator -resultBundlePath casino-app/build/Support.xcresult \
